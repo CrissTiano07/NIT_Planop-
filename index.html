@@ -164,9 +164,13 @@
         </div>
 
         <label class="form-label">Tipo de missão *</label>
-        <select id="nop-tipo" class="select-sm">
-          <option value="">— Selecionar —</option>
-        </select>
+        <div class="combo-wrap">
+          <input id="nop-tipo-input" type="text" class="input-sm"
+            placeholder="Digite para filtrar..."
+            autocomplete="off">
+          <div id="nop-tipo-list" class="combo-drop"></div>
+        </div>
+        <input id="nop-tipo" type="hidden" value="">
 
         <label class="form-label">Horário de início
           <span class="form-hint">opcional</span>
