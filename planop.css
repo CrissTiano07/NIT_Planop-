@@ -30,7 +30,7 @@
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
 
   --radius:    6px;
-  --radius-lg: 10px;
+  --radius-lg: 8px;
   --space-1:   4px;
   --space-2:   8px;
   --space-3:  12px;
@@ -63,6 +63,24 @@ body {
   font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* OpenType features do Inter — melhora legibilidade de l/1/I e outros */
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* Scrollbar discreta — não quebra o visual dark */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+
+/* Números tabulares no mono — todos com a mesma largura */
+.font-mono, [class*="font-mono"],
+.shift-clock, .topbar-clock, .qru-num,
+.staff-cargo-pill, .section-count, .campo-clock {
+  font-feature-settings: "tnum";
 }
 :focus-visible {
   outline: 2px solid var(--accent);
