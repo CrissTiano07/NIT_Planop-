@@ -1096,6 +1096,43 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .toast.danger  { background:#2b1010; border:1px solid var(--danger);  color:var(--danger); }
 
 /* ── RESPONSIVE (mobile) ─────────────────────────────────── */
+/* Estado de foco via teclado no combo */
+.combo-item-focused {
+  background: var(--accent-dim) !important;
+  color: var(--text-primary) !important;
+}
+.combo-item-focused::before {
+  content: '▶';
+  margin-right: 6px;
+  font-size: 8px;
+  color: var(--accent);
+}
+
+/* Form de posto inline — abre dentro da lista de QRUs */
+.posto-form-inline {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+  animation: slideDown var(--dur-normal) var(--ease-out);
+}
+.posto-form-header {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: var(--space-1);
+}
+.posto-form-footer {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* Badge de aviso no label do orientador */
+.badge-warn-sm {
+  font-size: 9px; font-weight: 700; padding: 1px 6px;
+  border-radius: 20px; background: var(--warning-dim);
+  color: var(--warning); margin-left: 4px;
+}
+
 @media (max-width: 768px) {
   .app-dashboard {
     grid-template-columns: 1fr;
