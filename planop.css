@@ -50,7 +50,7 @@
 
   /* Sidebar */
   --sidebar-w: 264px;
-  --right-w:   200px;
+  --right-w:   240px;
 }
 
 /* ── RESET ───────────────────────────────────────────────── */
@@ -943,8 +943,9 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .staff-info { flex: 1; min-width: 0; }
 .staff-nome {
-  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 130px;
 }
 .staff-sub {
   font-size: 9px; color: var(--text-muted); margin-top: 1px;
