@@ -972,13 +972,24 @@ const NIT_PLANOP = (() => {
       const badgeText = status==='vazio' ? 'VAZIO'
         : `PARCIAL ${orientadores.length} PESSOA${orientadores.length!==1?'S':''}`;
 
-      const chipsHTML = orientadores.map(([rId,ori]) =>
-        `<div class="orientador-chip">
-          ${esc(ori.nome||rId)}
+      const chipsHTML = orientadores.map(([rId,ori]) => {
+        const nome = ori.nome || rId;
+        // Title case para exibição — o banco pode ter ALL CAPS por legado
+        const nomeDisplay = nome.split(' ')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
+        const cargo = (ori.cargo || 'ORI').slice(0,3).toUpperCase();
+        const cor   = avatarColor(nome);
+        const ini   = avatarInitials(nome);
+        return `<div class="orientador-chip">
+          <div class="chip-avatar" style="background:${cor}">${ini}</div>
+          <span class="chip-nome">${esc(nomeDisplay)}</span>
+          <span class="chip-cargo">${esc(cargo)}</span>
           ${canWrite() ? `<button class="orientador-chip-remove"
             onclick="NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')"
             title="Remover">×</button>` : ''}
-        </div>`).join('');
+        </div>`;
+      }).join('');
 
       const addBtn = canWrite()
         ? `<div class="add-orientador-wrap">
