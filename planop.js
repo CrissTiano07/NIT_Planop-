@@ -523,8 +523,10 @@ const NIT_PLANOP = (() => {
     _initClock() {
       const tick = () => {
         const h = getHoraAtual();
-        const el = $('shift-clock');
-        if (el && el.textContent !== h) el.textContent = h;
+        ['shift-clock','topbar-clock'].forEach(id => {
+          const el = $(id);
+          if (el && el.textContent !== h) el.textContent = h;
+        });
       };
       tick();
       UI._clockTick = setInterval(tick, 5000);
@@ -888,12 +890,18 @@ const NIT_PLANOP = (() => {
                 .filter(Boolean).map(esc).join(' · ')}
             </div>
           </div>
-          <div class="op-topbar-meta">
-            <div class="toggle-modo">
-              <button class="toggle-modo-btn active" title="Modo execução">▶ Executar</button>
-              <button class="toggle-modo-btn" title="Modo planejamento"
-                onclick="NIT_PLANOP.UI.abrirPlanejar()">📅 Planejar</button>
+          <div class="op-topbar-right">
+            <div class="modo-btns">
+              <button class="modo-btn modo-btn-active">
+                ▶ EXECUTAR
+              </button>
+              <button class="modo-btn"
+                onclick="NIT_PLANOP.UI.abrirPlanejar()">
+                📅 PLANEJAR
+              </button>
             </div>
+            <span class="topbar-date">Hoje</span>
+            <span class="topbar-clock" id="topbar-clock">${getHoraAtual()}</span>
           </div>
         </div>
 
