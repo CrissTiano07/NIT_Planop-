@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>CENTRAL OPS · Plano Operacional</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230d1826%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%2358a6ff%22 font-family=%22monospace%22 font-weight=%22bold%22>C</text></svg>">
+  <link rel="stylesheet" href="planop.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA DE LOGIN
+═══════════════════════════════════════════════════════ -->
+<div id="login-screen" class="login-screen hidden">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-pulse" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="login-brand-text">
+        <span class="login-brand-name">CENTRAL OPS</span>
+        <span class="login-brand-sub">PLANO OPERACIONAL · AMC FORTALEZA</span>
+      </div>
+    </div>
+    <p class="login-desc">Acesso restrito a supervisores e monitores autorizados.</p>
+    <button class="btn-login-google" onclick="NIT_PLANOP.Auth.login()">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+        <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
+        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+      </svg>
+      Entrar com Google
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODO CAMPO (agente de campo — acesso anônimo)
+═══════════════════════════════════════════════════════ -->
+<div id="app-campo" class="hidden">
+  <header class="campo-header">
+    <div class="campo-brand">
+      <div class="brand-pill" aria-label="Central OPS">C</div>
+      <span class="campo-brand-name">CENTRAL OPS</span>
+    </div>
+    <span id="campo-turno-badge" class="campo-turno-badge"></span>
+    <span id="campo-clock" class="campo-clock"></span>
+  </header>
+
+  <main class="campo-main">
+    <div class="campo-search-wrap">
+      <label class="campo-search-label">CONSULTA DE QTH</label>
+      <div class="campo-search-row">
+        <input id="campo-busca" type="text" class="campo-input"
+          placeholder="Digite seu nome..." autocomplete="off"
+          oninput="NIT_PLANOP.Campo.onBusca(this.value)">
+        <button class="campo-clear hidden" id="campo-clear"
+          onclick="NIT_PLANOP.Campo.limpar()" aria-label="Limpar">×</button>
+      </div>
+      <p class="campo-hint">Mínimo 2 letras · Confirme pela matrícula</p>
+    </div>
+    <div id="campo-resultado" class="campo-resultado"></div>
+  </main>
+
+  <footer class="campo-footer">
+    <a href="?" class="campo-footer-link">← Painel de controle</a>
+    <span class="campo-footer-ver">v2.0 CENTRAL OPS</span>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     DASHBOARD PRINCIPAL (3 colunas)
+═══════════════════════════════════════════════════════ -->
+<div id="app-dashboard" class="app-dashboard hidden">
+
+  <!-- ── COLUNA 1: SIDEBAR ─────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Header da marca -->
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="brand-pulse sidebar-pulse" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="sidebar-brand-text">
+          <span class="sidebar-brand-name">CENTRAL OPS</span>
+          <span class="sidebar-brand-sub">PLANO OPERACIONAL</span>
+        </div>
+      </div>
+      <button class="btn-icon-nav" title="Configurações"
+        aria-label="Configurações">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Status do turno -->
+    <div class="shift-bar" id="shift-bar">
+      <div class="shift-bar-idle hidden" id="shift-idle">
+        <span class="shift-dot shift-dot-off"></span>
+        <span class="shift-idle-text">Nenhum turno ativo</span>
+        <button class="btn-shift-open" onclick="NIT_PLANOP.UI.abrirTurno()">
+          Abrir turno
+        </button>
+      </div>
+      <div class="shift-bar-active hidden" id="shift-active">
+        <span class="shift-dot shift-dot-on" aria-hidden="true"></span>
+        <span id="shift-label-text" class="shift-label"></span>
+        <span id="shift-clock" class="shift-clock"></span>
+      </div>
+    </div>
+
+    <!-- Botão encerrar turno -->
+    <div id="btn-encerrar-wrap" class="hidden">
+      <button class="btn-encerrar" onclick="NIT_PLANOP.Actions.encerrarTurno()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+        </svg>
+        Encerrar turno
+      </button>
+    </div>
+
+    <!-- Supervisão do turno -->
+    <div class="sidebar-section" id="supervisao-section">
+      <button class="sidebar-section-toggle" id="supervisao-toggle"
+        onclick="NIT_PLANOP.UI.toggleSupervisao()" aria-expanded="false">
+        <span class="section-label">SUPERVISÃO DO TURNO</span>
+        <span id="supervisao-count" class="section-count">—</span>
+        <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div id="supervisao-body" class="section-body hidden">
+        <div id="supervisao-lista" class="supervisao-lista"></div>
+        <button class="btn-add-membro" onclick="NIT_PLANOP.UI.abrirAddMembro()">
+          + Adicionar membro
+        </button>
+        <button class="btn-salvar-padrao" onclick="NIT_PLANOP.Actions.salvarSupervisaoPadrao()">
+          Salvar como padrão para este turno
+        </button>
+      </div>
+    </div>
+
+    <!-- Nova operação -->
+    <div class="sidebar-nova-op">
+      <button class="btn-nova-op" id="btn-nova-op"
+        onclick="NIT_PLANOP.UI.toggleNovaOp()">
+        + Nova Operação
+      </button>
+      <div id="nova-op-form" class="nova-op-form hidden">
+        <label class="form-label">Bairro *</label>
+        <div class="combo-wrap">
+          <input id="nop-bairro" type="text" class="input-sm"
+            placeholder="Digite o bairro..."
+            autocomplete="off"
+            oninput="NIT_PLANOP.UI.filtraBairroCombo(this.value)">
+          <div id="nop-bairro-list" class="combo-drop"></div>
+        </div>
+
+        <label class="form-label">Tipo de missão *</label>
+        <select id="nop-tipo" class="select-sm">
+          <option value="">— Selecionar —</option>
+        </select>
+
+        <label class="form-label">Horário de início
+          <span class="form-hint">opcional</span>
+        </label>
+        <input id="nop-horario" type="time" class="input-sm">
+
+        <label class="form-label">Nome
+          <span class="form-hint">gerado automaticamente</span>
+        </label>
+        <input id="nop-nome" type="text" class="input-sm"
+          placeholder="Ex: Controle de Tráfego — Aldeota">
+
+        <div class="nova-op-footer">
+          <button class="btn-ghost-sm" onclick="NIT_PLANOP.UI.fecharNovaOp()">
+            Cancelar
+          </button>
+          <button class="btn-accent-sm" onclick="NIT_PLANOP.Actions.criarOperacao()">
+            Criar Operação
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Busca de operações -->
+    <div class="sidebar-search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input id="sidebar-busca" type="text" placeholder="Buscar operação..."
+        oninput="NIT_PLANOP.UI.filtrarOps(this.value)">
+      <button class="sidebar-busca-clear hidden" id="sidebar-busca-clear"
+        onclick="NIT_PLANOP.UI.limparBuscaOps()" aria-label="Limpar busca">×</button>
+    </div>
+
+    <div class="section-label-row">OPERAÇÕES</div>
+
+    <!-- Lista de operações -->
+    <div id="ops-lista" class="ops-lista"></div>
+
+    <!-- Footer do usuário -->
+    <div class="sidebar-user">
+      <div class="avatar" id="user-avatar" aria-hidden="true">CM</div>
+      <div class="user-info">
+        <span id="user-name" class="user-name">Cristiano Miranda</span>
+        <span id="user-role" class="user-role-badge">SUPERVISOR</span>
+      </div>
+      <button class="btn-icon-nav" onclick="NIT_PLANOP.Auth.logout()"
+        title="Sair" aria-label="Sair">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── COLUNA 2: PAINEL PRINCIPAL ───────────────────── -->
+  <main class="main-panel" id="main-panel">
+
+    <!-- Indicador de conexão -->
+    <div id="conexao-bar" class="conexao-bar conexao-offline">
+      <span id="conexao-dot-main" class="conexao-dot"></span>
+      <span id="conexao-label-main">Conectando...</span>
+    </div>
+
+    <!-- Conteúdo dinâmico (renderizado por JS) -->
+    <div id="main-content"></div>
+  </main>
+
+  <!-- ── COLUNA 3: PAINEL DIREITO ──────────────────────── -->
+  <aside class="right-panel" id="right-panel">
+    <div class="right-header">
+      <span class="section-label">DISPONÍVEIS</span>
+      <span id="disponiveis-count" class="section-count">0</span>
+    </div>
+    <p class="right-hint">Clique em '+ Adicionar' em qualquer QRU ou arraste</p>
+    <div class="right-search">
+      <input id="right-busca" type="text" placeholder="Filtrar..."
+        oninput="NIT_PLANOP.UI.filtrarStaff(this.value)">
+    </div>
+    <div id="staff-lista" class="staff-lista"></div>
+  </aside>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FIREBASE
+═══════════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+<script src="planop.js"></script>
+
+</body>
+</html>
