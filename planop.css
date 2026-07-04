@@ -51,6 +51,22 @@
   /* Sidebar */
   --sidebar-w: 264px;
   --right-w:   240px;
+
+  /* ── LIFECYCLE DE OPERAÇÃO — sistema semiótico de duas camadas ──
+     Camada 1 (sidebar dots): andamento temporal da operação
+       cinza  = planejada / não iniciou  (neutro, sem julgamento)
+       laranja = ativa / em andamento    (índice de calor/atividade)
+       verde   = concluída / encerrada   (resolução)
+     Camada 2 (QRU card borders): cobertura do posto
+       vermelho = sem orientador | âmbar = com orientador(es)
+     As camadas operam em espaços visuais distintos para evitar
+     conflito semântico — Lei da Semelhança (Gestalt).             */
+  --lifecycle-pending:     #64748b;
+  --lifecycle-active:      #f97316;
+  --lifecycle-done:        #38bd6b;
+  --lifecycle-pending-dim: rgba(100,116,139,0.15);
+  --lifecycle-active-dim:  rgba(249,115,22,0.15);
+  --lifecycle-done-dim:    rgba(56,189,107,0.15);
 }
 
 /* ── RESET ───────────────────────────────────────────────── */
@@ -451,8 +467,11 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   width: 26px; height: 26px; border-radius: 6px;
   background: transparent;
   display: flex; align-items: center;
-  justify-content: center; flex-shrink: 0; font-size: 15px;
+  justify-content: center; flex-shrink: 0;
+  color: var(--text-tertiary);
 }
+.ops-item.active .ops-item-icon { color: var(--accent); }
+.ops-item:hover .ops-item-icon  { color: var(--text-secondary); }
 .ops-item-body { flex: 1; min-width: 0; }
 .ops-item-name {
   font-size: 13px; font-weight: 600; color: var(--text-primary);
