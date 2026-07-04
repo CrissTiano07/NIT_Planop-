@@ -1331,7 +1331,48 @@ const NIT_PLANOP = (() => {
     },
 
     abrirAddMembro() {
-      toast('Em breve: adicionar membro à supervisão.', 'info');
+      if (!S.escalaAtiva) { toast('Abra um turno primeiro', 'warning'); return; }
+
+      // Remover form anterior se existir
+      document.getElementById('add-membro-form')?.remove();
+
+      const supervisaoLista = $('supervisao-lista');
+      if (!supervisaoLista) return;
+
+      const formHTML = `
+        <div id="add-membro-form" style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+          <div class="combo-wrap">
+            <input id="membro-nome-input" type="text" class="input-sm"
+              placeholder="Nome do membro..." autocomplete="off">
+            <div id="membro-nome-list" class="combo-drop"></div>
+          </div>
+          <select id="membro-cargo" class="select-sm">
+            ${CFG.CARGOS_SUPERVISAO.map(c => `<option>${c}</option>`).join('')}
+          </select>
+          <input id="membro-contato" type="tel" class="input-sm"
+            placeholder="Telefone (opcional)">
+          <div style="display:flex;gap:6px;justify-content:flex-end">
+            <button class="btn-ghost-sm"
+              onclick="document.getElementById('add-membro-form')?.remove()">
+              Cancelar
+            </button>
+            <button class="btn-accent-sm"
+              onclick="NIT_PLANOP.Actions.confirmarAddMembro()">
+              Adicionar
+            </button>
+          </div>
+        </div>`;
+
+      supervisaoLista.insertAdjacentHTML('afterend', formHTML);
+
+      // Combo de recursos com teclado
+      const items = Object.entries(S.recursos)
+        .filter(([,r]) => r.status !== 'desligado')
+        .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'))
+        .map(([id, r]) => ({ value: id, label: `${r.nome} · ${r.cargo||'—'}` }));
+
+      UI._combo('membro-nome-input', 'membro-nome-list', items, () => {});
+      setTimeout(() => $('membro-nome-input')?.focus(), 60);
     },
 
     abrirPlanejar() {
@@ -1530,11 +1571,11 @@ const NIT_PLANOP = (() => {
       const local = $('pf-local')?.value.trim();
       if (!local) { toast('Endereço é obrigatório — sem isso ninguém sabe onde ir.', 'warning'); $('pf-local')?.focus(); return; }
 
-      const bairro     = $('pf-bairro-input')?.value.trim() || '';
-      const obs        = $('pf-obs')?.value.trim() || '';
-      const oriInput   = $('pf-orientador-input');
-      const oriValue   = oriInput?.dataset.selectedValue || '';
-      const op         = S.operacoes[opId] || {};
+      const bairro   = $('pf-bairro-input')?.value.trim() || '';
+      const obs      = $('pf-obs')?.value.trim() || '';
+      const oriInput = $('pf-orientador-input');
+      const oriValue = oriInput?.dataset.selectedValue || '';
+      const op       = S.operacoes[opId] || {};
 
       let alocacao = null;
       if (oriValue) {
@@ -1547,20 +1588,27 @@ const NIT_PLANOP = (() => {
         }
       }
 
-      await DB.adicionarPosto({
+      // DB.adicionarPosto retorna o ref.key do novo posto — único e correto.
+      // Não usar Object.keys(S.postos).pop() que é não-determinístico.
+      const postoId = await DB.adicionarPosto({
         operacaoId: opId,
-        local:  upper(local),
-        bairro: upper(bairro) || op.bairro || '',
-        horario: op.horario || '',
+        local:    upper(local),
+        bairro:   upper(bairro) || op.bairro || '',
+        horario:  op.horario || '',
         tipoAcao: 'CONTROLE',
         alocacao,
-        obs: upper(obs),
+        obs:      upper(obs),
         qruPessoas: 1
       });
 
-      if (alocacao?.id && alocacao.tipo === 'agente') {
-        const postoId = Object.keys(S.postos).pop();
-        if (postoId) await DB.adicionarOrientadorAoPosto(postoId, alocacao.id);
+      // Designar orientador se foi selecionado — usando o ID correto do posto
+      if (postoId && alocacao?.id) {
+        if (alocacao.tipo === 'agente') {
+          await DB.adicionarOrientadorAoPosto(postoId, alocacao.id);
+        } else {
+          // Equipe: marcar a viatura como escalada no Firebase
+          await S.db.ref(`efetivo/viaturas/${alocacao.id}/status`).set('escalada');
+        }
       }
 
       UI.fecharAddPosto(opId);
@@ -1588,8 +1636,28 @@ const NIT_PLANOP = (() => {
       toast('Operação criada!', 'success');
     },
 
+    async confirmarAddMembro() {
+      const nomInp  = $('membro-nome-input');
+      const recursoId = nomInp?.dataset.selectedValue || '';
+      const cargo   = $('membro-cargo')?.value;
+      const contato = $('membro-contato')?.value.trim() || '';
+
+      if (!recursoId) {
+        toast('Selecione um membro da lista', 'warning');
+        $('membro-nome-input')?.focus();
+        return;
+      }
+
+      const r = S.recursos[recursoId] || {};
+      await S.db.ref(
+        `efetivo/escalas/${S.escalaAtiva}/supervisao/${recursoId}`
+      ).set({ nome: r.nome||recursoId, cargo, contato, fixo: false });
+
+      document.getElementById('add-membro-form')?.remove();
+      toast(`${r.nome||recursoId} adicionado à supervisão`, 'success');
+    },
+
     async encerrarTurno() {
-      if (!S.escalaAtiva) return;
       if (!confirm('Encerrar o turno?\n\nOs recursos escalados voltarão para DISPONÍVEL.')) return;
       vibrar([60,40,60]);
       await DB.encerrarEscala(S.escalaAtiva, '');
