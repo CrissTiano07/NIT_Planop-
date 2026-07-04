@@ -734,23 +734,47 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   text-transform: uppercase; color: var(--text-muted);
   margin-bottom: var(--space-2);
 }
+/* Chip de orientador designado — padrão tipográfico Lovable */
 .orientadores-chips {
   display: flex; flex-wrap: wrap; gap: var(--space-2);
   margin-bottom: var(--space-3); min-height: 28px;
 }
 .orientador-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 8px; border-radius: 20px;
-  background: var(--success-dim); border: 1px solid var(--success);
-  font-size: 11px; color: var(--success); font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.chip-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 700; flex-shrink: 0;
+  color: #0d1826; font-family: var(--font-ui);
+  font-feature-settings: normal;
+}
+.chip-nome {
+  /* Inter 500, title case, text-primary, letter-spacing 0 */
+  font-size: 13px; font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+.chip-cargo {
+  /* Inter 600, UPPERCASE, text-muted, leve tracking */
+  font-size: 10px; font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .orientador-chip-remove {
-  background: none; border: none; color: var(--success);
-  font-size: 13px; line-height: 1; cursor: pointer;
-  padding: 0; opacity: 0.7;
-  transition: opacity var(--dur-fast);
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 14px; line-height: 1;
+  padding: 0 0 0 2px; opacity: 0.7;
+  transition: opacity var(--dur-fast), color var(--dur-fast);
+  display: flex; align-items: center;
 }
-.orientador-chip-remove:hover { opacity: 1; }
+.orientador-chip-remove:hover { opacity: 1; color: var(--danger); }
 
 /* Dropdown add orientador */
 .add-orientador-wrap { position: relative; }
