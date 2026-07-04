@@ -989,7 +989,10 @@ const NIT_PLANOP = (() => {
             <div id="drop-${postoId}" class="orientador-drop"></div>
            </div>` : '';
 
-      return `<div class="qru-card status-${status}" id="qru-${postoId}">
+      return `<div class="qru-card status-${status}" id="qru-${postoId}"
+        ondragover="NIT_PLANOP.UI.dragOverQru(event,'${postoId}')"
+        ondragleave="NIT_PLANOP.UI.dragLeaveQru(event,'${postoId}')"
+        ondrop="NIT_PLANOP.UI.dropOnQru(event,'${postoId}')">
         <div class="qru-card-header" onclick="NIT_PLANOP.UI.toggleQru('${postoId}')">
           <span class="qru-num">${posto.numero||'?'}</span>
           <div class="qru-addr-wrap">
@@ -1232,11 +1235,12 @@ const NIT_PLANOP = (() => {
         (r.nome||'').toLowerCase().includes(busca)) : arr;
 
       const rowHTML = ([rId,r], muted=false) => {
-        // Descobrir em qual posto está
         const posto = Object.entries(S.postos).find(([,p]) => p.orientadores?.[rId]);
-        const postoInfo = posto
-          ? `→ [${posto[1].numero||'?'}]` : '';
-        return `<div class="staff-row ${muted?'muted':''}" draggable="${!muted}">
+        const postoInfo = posto ? `→ [${posto[1].numero||'?'}]` : '';
+        return `<div class="staff-row ${muted?'muted':''}"
+          draggable="${!muted}"
+          ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"
+          ondragend="NIT_PLANOP.UI.dragEndStaff(event)">
           <span class="staff-drag-handle" aria-hidden="true">⠿</span>
           <div class="staff-avatar" style="background:${avatarColor(r.nome)}" aria-hidden="true">
             ${avatarInitials(r.nome)}
@@ -1271,6 +1275,49 @@ const NIT_PLANOP = (() => {
           ? `<div style="padding:16px;font-size:11px;color:var(--text-muted);text-align:center">
                Nenhum recurso cadastrado
              </div>` : ''}`;
+    },
+
+    // ── DRAG & DROP — painel direito → QRU card ──────────────
+    dragStartStaff(event, rId) {
+      // setData é obrigatório para Safari — sem ele o drag não funciona
+      event.dataTransfer.setData('text/plain', rId);
+      event.dataTransfer.effectAllowed = 'copy';
+      // Feedback visual no elemento arrastado
+      setTimeout(() => event.target.closest('.staff-row')?.classList.add('dragging'), 0);
+    },
+
+    dragEndStaff(event) {
+      event.target.closest('.staff-row')?.classList.remove('dragging');
+      // Limpar qualquer drag-over que tenha ficado
+      document.querySelectorAll('.qru-card.drag-over')
+        .forEach(el => el.classList.remove('drag-over'));
+    },
+
+    dragOverQru(event, postoId) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      document.getElementById(`qru-${postoId}`)?.classList.add('drag-over');
+    },
+
+    dragLeaveQru(event, postoId) {
+      // Só remove se o leave for para fora do card (não para um filho)
+      const card = document.getElementById(`qru-${postoId}`);
+      if (card && !card.contains(event.relatedTarget)) {
+        card.classList.remove('drag-over');
+      }
+    },
+
+    dropOnQru(event, postoId) {
+      event.preventDefault();
+      const rId = event.dataTransfer.getData('text/plain');
+      document.getElementById(`qru-${postoId}`)?.classList.remove('drag-over');
+      if (!rId) return;
+      // Verificar se já está designado neste posto
+      if (S.postos[postoId]?.orientadores?.[rId]) {
+        toast(`${S.recursos[rId]?.nome||'Pessoa'} já está neste posto`, 'warning');
+        return;
+      }
+      NIT_PLANOP.Actions.addOrientador(postoId, rId);
     },
 
     filtrarStaff(val) {
