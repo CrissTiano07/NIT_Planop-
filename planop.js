@@ -1069,16 +1069,27 @@ const NIT_PLANOP = (() => {
     },
 
     // ── DROPDOWN DE ORIENTADOR
+    // Bairro do form de nova operação — inicializado uma vez ao abrir o form
+    _initBairroCombo() {
+      UI._combo('nop-bairro', 'nop-bairro-list',
+        CFG.BAIRROS.map(b => ({ value: b, label: b })),
+        () => UI._autoNomeOp()
+      );
+    },
+
+    // Dropdown de orientador por QRU — usa _combo para consistência
     abrirDropOrientador(event, postoId) {
       event.stopPropagation();
-      const drop = document.getElementById(`drop-${postoId}`);
-      if (!drop) return;
 
       // Fechar outros abertos
       if (S._dropAberto && S._dropAberto !== `drop-${postoId}`) {
         const outro = document.getElementById(S._dropAberto);
         if (outro) outro.classList.remove('open');
+        S._dropAberto = null;
       }
+
+      const drop = document.getElementById(`drop-${postoId}`);
+      if (!drop) return;
 
       if (drop.classList.contains('open')) {
         drop.classList.remove('open');
@@ -1086,53 +1097,94 @@ const NIT_PLANOP = (() => {
         return;
       }
 
-      // Posicionar
-      const btn = event.currentTarget;
-      const r   = btn.getBoundingClientRect();
-      drop.style.top   = `${r.bottom+4}px`;
-      drop.style.left  = `${r.left}px`;
-      drop.style.width = `${Math.max(240, r.width)}px`;
-
-      // Montar conteúdo
-      const jaDesignados = Object.keys(S.postos[postoId]?.orientadores||{});
-      const disponíveis  = Object.entries(S.recursos)
+      // Montar conteúdo — itens com disponibilidade visual
+      const jaDesignados = Object.keys(S.postos[postoId]?.orientadores || {});
+      const items = Object.entries(S.recursos)
         .filter(([,r]) => r.status !== 'desligado' && r.status !== 'ausente')
-        .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'));
+        .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'))
+        .map(([rId, r]) => {
+          const desig = jaDesignados.includes(rId);
+          const sub   = desig ? ' · já designado'
+                      : r.status === 'escalado' ? ' · em outro posto'
+                      : '';
+          return {
+            value:    rId,
+            label:    `${r.nome}${sub}`,
+            disabled: desig,
+            dot:      r.status === 'disponivel' ? 'on' : 'off'
+          };
+        });
 
+      // Estrutura do dropdown com search input próprio
       drop.innerHTML = `
         <div class="orientador-drop-search">
-          <input type="text" placeholder="Buscar por nome..."
-            id="drop-search-${postoId}"
-            oninput="NIT_PLANOP.UI.filtrarDrop('${postoId}',this.value)"
-            autocomplete="off">
+          <input type="text" id="drop-search-${postoId}"
+            placeholder="Buscar por nome..." autocomplete="off">
         </div>
-        <div class="orientador-drop-list" id="drop-list-${postoId}">
-          ${disponíveis.map(([rId,r]) => {
-            const desig   = jaDesignados.includes(rId);
-            const dot_cls = r.status==='disponivel' ? 'on' : 'off';
-            const sub     = desig ? 'já designado' : (r.status==='escalado' ? 'em outro posto' : r.cargo||'');
-            return `<div class="orientador-drop-item ${desig?'disabled':''}"
-              onclick="${desig?'':'NIT_PLANOP.Actions.addOrientador(\''+postoId+'\',\''+rId+'\')'}"
-              data-nome="${esc(r.nome||'')}" data-id="${rId}">
-              <span class="drop-avail-dot ${dot_cls}"></span>
-              <span class="drop-item-nome">${esc(r.nome||rId)}</span>
-              <span class="drop-item-cargo">${esc(sub)}</span>
-            </div>`;
-          }).join('')}
-          ${!disponíveis.length ? `<div class="combo-empty">Nenhum disponível</div>` : ''}
-        </div>`;
+        <div class="orientador-drop-list" id="drop-body-${postoId}"></div>`;
 
       drop.classList.add('open');
       S._dropAberto = `drop-${postoId}`;
-      setTimeout(() => document.getElementById(`drop-search-${postoId}`)?.focus(), 50);
-    },
 
-    filtrarDrop(postoId, val) {
-      const busca = val.toLowerCase().trim();
-      document.querySelectorAll(`#drop-list-${postoId} .orientador-drop-item`).forEach(el => {
-        const nome = el.dataset.nome?.toLowerCase()||'';
-        el.style.display = (!busca || nome.includes(busca)) ? '' : 'none';
+      // Posicionar antes de montar o combo (precisa estar visível)
+      const btn = event.currentTarget;
+      const r   = btn.getBoundingClientRect();
+      drop.style.top   = `${r.bottom + 4}px`;
+      drop.style.left  = `${r.left}px`;
+      drop.style.width = `${Math.max(240, r.width)}px`;
+
+      // Reusar _combo no input de busca interno — teclado + filtro
+      const inputId = `drop-search-${postoId}`;
+      const listId  = `drop-body-${postoId}`;
+
+      // Renderizar lista com dot de disponibilidade
+      const renderItems = (filtro = '') => {
+        const f = filtro.toLowerCase().trim();
+        const vis = f ? items.filter(it => it.label.toLowerCase().includes(f)) : items;
+        const body = document.getElementById(listId);
+        if (!body) return;
+        body.innerHTML = vis.length
+          ? vis.map(it => `
+              <div class="orientador-drop-item ${it.disabled ? 'disabled' : ''}"
+                data-id="${esc(it.value)}"
+                onclick="${it.disabled ? '' : `NIT_PLANOP.Actions.addOrientador('${postoId}','${it.value}')`}">
+                <span class="drop-avail-dot ${it.dot}"></span>
+                <span class="drop-item-nome">${esc(it.label)}</span>
+              </div>`).join('')
+          : `<div class="combo-empty">Nenhum resultado</div>`;
+      };
+
+      renderItems();
+
+      // Teclado no search input do dropdown
+      let focusIdx = -1;
+      const inp = document.getElementById(inputId);
+      if (!inp) return;
+
+      const getVis = () => [...document.querySelectorAll(`#${listId} .orientador-drop-item:not(.disabled)`)];
+
+      inp.addEventListener('input', () => { focusIdx = -1; renderItems(inp.value); });
+      inp.addEventListener('keydown', e => {
+        const vis = getVis();
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          focusIdx = Math.min(focusIdx + 1, vis.length - 1);
+          vis.forEach((el, i) => el.classList.toggle('combo-item-focused', i === focusIdx));
+          vis[focusIdx]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          focusIdx = Math.max(focusIdx - 1, 0);
+          vis.forEach((el, i) => el.classList.toggle('combo-item-focused', i === focusIdx));
+          vis[focusIdx]?.scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          if (focusIdx >= 0) { e.preventDefault(); vis[focusIdx]?.click(); }
+          else if (vis.length === 1) { e.preventDefault(); vis[0].click(); }
+        } else if (e.key === 'Escape') {
+          drop.classList.remove('open'); S._dropAberto = null;
+        }
       });
+
+      setTimeout(() => inp?.focus(), 40);
     },
 
     // ── PAINEL DIREITO (staff disponíveis)
@@ -1209,11 +1261,15 @@ const NIT_PLANOP = (() => {
       const aberto = !form.classList.contains('hidden');
       form.classList.toggle('hidden', aberto);
       if (!aberto) {
-        // Limpar ao abrir
-        [$('nop-bairro'),$('nop-nome')].forEach(el => { if(el) el.value=''; });
-        const tip = $('nop-tipo'); if(tip) tip.value='';
+        // Limpar campos
+        [$('nop-bairro'), $('nop-nome')].forEach(el => { if(el) el.value=''; });
+        const hidden = $('nop-tipo'); if (hidden) hidden.value = '';
+        const tipoInp = $('nop-tipo-input'); if (tipoInp) tipoInp.value = '';
         const hor = $('nop-horario'); if(hor) hor.value='';
-        const nome = $('nop-nome'); if(nome) nome._editado=false;
+        const nome = $('nop-nome'); if(nome) nome._editado = false;
+        // Inicializar combos (bairro + tipo de missão) — padrão unificado
+        UI._initBairroCombo();
+        UI.popularSelectTipos();
         setTimeout(() => $('nop-bairro')?.focus(), 100);
       }
     },
@@ -1223,43 +1279,6 @@ const NIT_PLANOP = (() => {
     },
 
     // Autocomplete de bairro no formulário inline
-    filtraBairroCombo(val) {
-      const drop = $('nop-bairro-list');
-      if (!drop) return;
-      if (!val || val.length < 1) { drop.classList.remove('open'); return; }
-      const matches = CFG.BAIRROS
-        .filter(b => b.toLowerCase().includes(val.toLowerCase()))
-        .slice(0, 8);
-      if (!matches.length) {
-        drop.innerHTML = `<div class="combo-empty">Nenhum bairro encontrado</div>`;
-      } else {
-        drop.innerHTML = matches.map(b =>
-          `<div class="combo-item"
-            onmousedown="NIT_PLANOP.UI.selecionarBairro('${esc(b)}')">${esc(b)}</div>`
-        ).join('');
-      }
-      const inp = $('nop-bairro');
-      const r   = inp?.getBoundingClientRect();
-      if (r) {
-        drop.style.top   = `${r.bottom+2}px`;
-        drop.style.left  = `${r.left}px`;
-        drop.style.width = `${r.width}px`;
-      }
-      drop.classList.add('open');
-    },
-
-    selecionarBairro(bairro) {
-      const inp = $('nop-bairro');
-      if (inp) inp.value = bairro;
-      $('nop-bairro-list')?.classList.remove('open');
-      UI._autoNomeOp();
-    },
-
-    // ── ADD POSTO (placeholder)
-    abrirAddPosto(opId) {
-      toast('Em breve: adicionar posto diretamente nesta interface.', 'info');
-    },
-
     // ── FOTOS (placeholders conectados ao input de arquivo)
     addFotoRef(postoId) {
       const inp = document.createElement('input');
