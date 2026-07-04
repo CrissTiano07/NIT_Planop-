@@ -531,11 +531,185 @@ const NIT_PLANOP = (() => {
     },
 
     popularSelectTipos() {
-      const sel = $('nop-tipo');
-      if (!sel) return;
-      sel.innerHTML = `<option value="">— Selecionar —</option>` +
-        CFG.TIPOS_MISSAO.map(t => `<option>${esc(t)}</option>`).join('');
-      sel.onchange = () => UI._autoNomeOp();
+      // Monta o combo pesquisável de tipo de missão com navegação por teclado
+      UI._combo('nop-tipo-input', 'nop-tipo-list',
+        CFG.TIPOS_MISSAO.map(t => ({ value: t, label: t })),
+        (value) => {
+          const hidden = $('nop-tipo');
+          if (hidden) hidden.value = value;
+          UI._autoNomeOp();
+        }
+      );
+    },
+
+    // ── COMBO UNIFICADO COM TECLADO ────────────────────────
+    // Substitui todos os <select> do sistema por um input pesquisável
+    // com navegação por teclado: ↑↓ navegar · Enter selecionar · Esc fechar
+    _combo(inputId, listId, items, onSelect) {
+      const inp  = $(inputId);
+      const list = $(listId);
+      if (!inp || !list) return;
+
+      let focusIdx = -1;
+
+      const getVisiveis = () =>
+        [...list.querySelectorAll('.combo-item')].filter(el => el.style.display !== 'none');
+
+      const posicionar = () => {
+        const r = inp.getBoundingClientRect();
+        list.style.top   = `${r.bottom + 2}px`;
+        list.style.left  = `${r.left}px`;
+        list.style.width = `${Math.max(r.width, 220)}px`;
+      };
+
+      const render = (filtro = '') => {
+        focusIdx = -1;
+        const f = filtro.toLowerCase().trim();
+        const matches = f
+          ? items.filter(it => it.label.toLowerCase().includes(f))
+          : items;
+
+        list.innerHTML = matches.length
+          ? matches.map(it =>
+              `<div class="combo-item" data-value="${esc(it.value)}">${esc(it.label)}</div>`
+            ).join('')
+          : `<div class="combo-empty">Nenhum resultado para "${esc(filtro)}"</div>`;
+
+        list.querySelectorAll('.combo-item').forEach(el => {
+          el.addEventListener('mousedown', e => e.preventDefault());
+          el.addEventListener('click', () => {
+            inp.value  = el.textContent;
+            inp.dataset.selectedValue = el.dataset.value;
+            list.classList.remove('open');
+            focusIdx = -1;
+            onSelect(el.dataset.value, el.textContent);
+          });
+        });
+
+        posicionar();
+        list.classList.add('open');
+      };
+
+      inp.addEventListener('input',  () => render(inp.value));
+      inp.addEventListener('focus',  () => render(inp.value));
+      inp.addEventListener('blur',   () => setTimeout(() => list.classList.remove('open'), 180));
+      inp.addEventListener('keydown', e => {
+        const vis = getVisiveis();
+        if (!vis.length && e.key !== 'Escape') return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (!list.classList.contains('open')) { render(inp.value); return; }
+          focusIdx = Math.min(focusIdx + 1, vis.length - 1);
+          vis.forEach((el, i) => el.classList.toggle('combo-item-focused', i === focusIdx));
+          vis[focusIdx]?.scrollIntoView({ block: 'nearest' });
+
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          focusIdx = Math.max(focusIdx - 1, 0);
+          vis.forEach((el, i) => el.classList.toggle('combo-item-focused', i === focusIdx));
+          vis[focusIdx]?.scrollIntoView({ block: 'nearest' });
+
+        } else if (e.key === 'Enter') {
+          if (focusIdx >= 0 && vis[focusIdx]) {
+            e.preventDefault();
+            vis[focusIdx].click();
+          } else if (vis.length === 1) {
+            // Enter com um único resultado → seleciona automaticamente
+            e.preventDefault();
+            vis[0].click();
+          }
+        } else if (e.key === 'Escape') {
+          list.classList.remove('open');
+          focusIdx = -1;
+        }
+      });
+    },
+
+    // ── ADD POSTO INLINE ───────────────────────────────────
+    // Abre um mini-form inline dentro do card da operação.
+    // Sem modal — o operador preenche sem perder o contexto visual.
+    abrirAddPosto(opId) {
+      // Fechar qualquer form inline aberto anteriormente
+      document.querySelectorAll('.posto-form-inline').forEach(el => el.remove());
+
+      const op        = S.operacoes[opId] || {};
+      const formId    = `posto-form-${opId}`;
+      const container = document.querySelector(`#qru-${opId.replace(/[^a-zA-Z0-9]/g,'\\$&')} .qrus-lista`)
+                     || document.getElementById('qrus-lista');
+
+      const formHTML = `
+        <div class="posto-form-inline" id="${formId}">
+          <div class="posto-form-header">Novo posto · ${esc(op.nome||'—')}</div>
+
+          <label class="form-label">Endereço / Local *</label>
+          <input id="pf-local" type="text" class="input-sm"
+            placeholder="Ex: AV DES MOREIRA × AV DOM LUÍS" autocomplete="off">
+
+          <label class="form-label">Bairro
+            <span class="form-hint">pré-preenchido da operação, editável</span>
+          </label>
+          <div class="combo-wrap">
+            <input id="pf-bairro-input" type="text" class="input-sm"
+              value="${esc(op.bairro||'')}"
+              placeholder="Bairro..." autocomplete="off">
+            <div id="pf-bairro-list" class="combo-drop"></div>
+          </div>
+
+          <label class="form-label">Observação
+            <span class="form-hint">opcional</span>
+          </label>
+          <input id="pf-obs" type="text" class="input-sm" placeholder="">
+
+          <label class="form-label">Orientador / Equipe
+            <span class="badge badge-warn-sm">⚠ não designado</span>
+          </label>
+          <div class="combo-wrap">
+            <input id="pf-orientador-input" type="text" class="input-sm"
+              placeholder="Opcional — designar depois é possível"
+              autocomplete="off">
+            <div id="pf-orientador-list" class="combo-drop"></div>
+          </div>
+
+          <div class="posto-form-footer">
+            <button class="btn-ghost-sm"
+              onclick="NIT_PLANOP.UI.fecharAddPosto('${opId}')">Cancelar</button>
+            <button class="btn-accent-sm"
+              onclick="NIT_PLANOP.Actions.criarPosto('${opId}')">+ Adicionar posto</button>
+          </div>
+        </div>`;
+
+      // Inserir antes do card de "nenhum posto" ou ao final da lista
+      const qrusLista = document.getElementById('qrus-lista');
+      if (qrusLista) {
+        qrusLista.insertAdjacentHTML('beforeend', formHTML);
+      }
+
+      // Montar combos com teclado
+      UI._combo('pf-bairro-input', 'pf-bairro-list',
+        CFG.BAIRROS.map(b => ({ value: b, label: b })),
+        (value) => { $('pf-bairro-input').value = value; }
+      );
+
+      const staffItems = Object.entries(S.recursos)
+        .filter(([,r]) => r.status !== 'desligado' && r.status !== 'ausente')
+        .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'))
+        .map(([id,r]) => ({ value: `a:${id}`, label: `${r.nome} · ${r.cargo||''}` }));
+      const equipeItems = Object.entries(S.viaturas)
+        .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'))
+        .map(([id,v]) => ({ value: `v:${id}`, label: `👥 ${v.nome||id}` }));
+
+      UI._combo('pf-orientador-input', 'pf-orientador-list',
+        [...staffItems, ...equipeItems],
+        () => {} // só armazena no dataset do input
+      );
+
+      // Foco automático no campo obrigatório
+      setTimeout(() => $('pf-local')?.focus(), 80);
+    },
+
+    fecharAddPosto(opId) {
+      document.querySelectorAll('.posto-form-inline').forEach(el => el.remove());
     },
 
     _autoNomeOp() {
@@ -1333,8 +1507,51 @@ const NIT_PLANOP = (() => {
       vibrar(40);
     },
 
+    async criarPosto(opId) {
+      const local = $('pf-local')?.value.trim();
+      if (!local) { toast('Endereço é obrigatório — sem isso ninguém sabe onde ir.', 'warning'); $('pf-local')?.focus(); return; }
+
+      const bairro     = $('pf-bairro-input')?.value.trim() || '';
+      const obs        = $('pf-obs')?.value.trim() || '';
+      const oriInput   = $('pf-orientador-input');
+      const oriValue   = oriInput?.dataset.selectedValue || '';
+      const op         = S.operacoes[opId] || {};
+
+      let alocacao = null;
+      if (oriValue) {
+        if (oriValue.startsWith('v:')) {
+          const id = oriValue.slice(2);
+          alocacao = { tipo:'equipe', id, nome: S.viaturas[id]?.nome||id };
+        } else {
+          const id = oriValue.slice(2);
+          alocacao = { tipo:'agente', id, nome: S.recursos[id]?.nome||id };
+        }
+      }
+
+      await DB.adicionarPosto({
+        operacaoId: opId,
+        local:  upper(local),
+        bairro: upper(bairro) || op.bairro || '',
+        horario: op.horario || '',
+        tipoAcao: 'CONTROLE',
+        alocacao,
+        obs: upper(obs),
+        qruPessoas: 1
+      });
+
+      if (alocacao?.id && alocacao.tipo === 'agente') {
+        const postoId = Object.keys(S.postos).pop();
+        if (postoId) await DB.adicionarOrientadorAoPosto(postoId, alocacao.id);
+      }
+
+      UI.fecharAddPosto(opId);
+      vibrar(40);
+      toast(alocacao ? 'Posto adicionado!' : 'Posto adicionado — designar orientador depois.', 'success');
+    },
+
     async criarOperacao() {
       const bairro = $('nop-bairro')?.value?.trim();
+      // Tipo lido do hidden input (preenchido pelo combo)
       const tipo   = $('nop-tipo')?.value;
       const hor    = $('nop-horario')?.value;
       const nome   = $('nop-nome')?.value?.trim() ||
