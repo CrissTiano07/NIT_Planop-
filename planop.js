@@ -1295,8 +1295,10 @@ const NIT_PLANOP = (() => {
         return `<div class="staff-row ${muted?'muted':''}"
           draggable="${!muted}"
           ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"
-          ondragend="NIT_PLANOP.UI.dragEndStaff(event)">
-          <span class="staff-drag-handle" aria-hidden="true">⠿</span>
+          ondragend="NIT_PLANOP.UI.dragEndStaff(event)"
+          ${canWrite() && !muted ? `onclick="NIT_PLANOP.UI.abrirStatusPessoa(event,'${rId}')"` : ''}>
+          <span class="staff-drag-handle" aria-hidden="true"
+            onclick="event.stopPropagation()">⠿</span>
           <div class="staff-avatar" style="background:${avatarColor(r.nome)}" aria-hidden="true">
             ${avatarInitials(r.nome)}
           </div>
@@ -1306,11 +1308,7 @@ const NIT_PLANOP = (() => {
             ${motivo ? `<div class="staff-sub staff-motivo">${esc(motivo)}</div>` : ''}
           </div>
           <span class="staff-cargo-pill">${esc(CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || r.cargo?.slice(0,3)?.toUpperCase() || 'ORI')}</span>
-          ${canWrite() ? `
-          <button class="staff-status-btn staff-dot ${r.status}"
-            onclick="NIT_PLANOP.UI.abrirStatusPessoa(event,'${rId}')"
-            title="Alterar status"></button>` :
-          `<span class="staff-dot ${r.status}"></span>`}
+          <span class="staff-dot ${r.status}"></span>
         </div>`;
       };
 
