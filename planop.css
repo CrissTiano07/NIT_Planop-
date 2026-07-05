@@ -968,38 +968,66 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .right-search input:focus { outline: none; border-color: var(--accent); }
 .right-search input::placeholder { color: var(--text-muted); }
 .staff-lista { flex: 1; overflow-y: auto; }
+/* Right panel — padrão Lovable ──────────────────────────── */
 .staff-group-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text-tertiary);
-  padding: var(--space-3) var(--space-4) var(--space-1);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: 10px var(--space-4) 6px;
   display: flex; align-items: center; justify-content: space-between;
-  position: sticky; top: 0;
-  background: var(--bg-surface);
+  position: sticky; top: 0; background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
 }
 .staff-group-label span {
-  font-size: 10px; font-weight: 700;
-  background: var(--surface-hover);
-  padding: 1px 6px; border-radius: 10px;
-  color: var(--text-muted);
+  font-size: 10px; font-weight: 700; letter-spacing: 0;
+  background: var(--bg-card); padding: 1px 7px;
+  border-radius: 10px; color: var(--text-muted);
 }
+.disponivel-label { color: var(--success); }
+.disponivel-label span { color: var(--success); background: var(--success-dim); }
+.warning-label  { color: var(--warning); }
+.warning-label span  { color: var(--warning); background: var(--warning-dim); }
+.danger-label   { color: var(--danger); }
+.danger-label span   { color: var(--danger); background: var(--danger-dim); }
+
 .staff-row {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: 7px var(--space-4); cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px var(--space-4);
+  cursor: pointer;
   transition: background var(--dur-fast);
   border-bottom: 1px solid var(--border);
 }
 .staff-row:hover { background: var(--surface-hover); }
-.staff-row.muted { opacity: 0.5; cursor: default; }
-.staff-drag-handle {
-  color: var(--text-muted); font-size: 13px;
-  cursor: grab; flex-shrink: 0; letter-spacing: -2px;
-}
+.staff-row.no-drag { cursor: default; }
+.staff-row.dragging { opacity: 0.4; }
 
-.staff-motivo {
-  color: var(--warning) !important;
-  font-style: italic;
+/* Indisponíveis — levemente opacos mas clicáveis */
+.staff-row.indisponivel { opacity: 0.65; }
+.staff-row.indisponivel:hover { opacity: 1; background: var(--surface-hover); }
+.staff-row.escalado { opacity: 0.55; cursor: default; }
+
+.staff-avatar {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #0d1826;
 }
+.staff-info { flex: 1; min-width: 0; }
+.staff-nome {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.staff-sub-line {
+  font-size: 11px; color: var(--text-muted); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.staff-sub-line.has-motivo { color: var(--warning); font-style: italic; }
+
+.staff-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.staff-dot.disponivel   { background: var(--success); }
+.staff-dot.escalado     { background: var(--accent); }
+.staff-dot.indisponivel { background: var(--warning); }
+.staff-dot.ausente      { background: var(--danger); }
 
 /* Popover de status com motivo */
 .status-popover {
