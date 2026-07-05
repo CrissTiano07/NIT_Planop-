@@ -93,7 +93,17 @@ const NIT_PLANOP = (() => {
       'MOTOCICLISTA': 'MOT',
       'MONITOR':      'MON',
       'ORIENTADOR':   'ORI'
-    }
+    },
+
+    // Motivos de indisponibilidade — exibidos no painel direito
+    // e gravados em /efetivo/recursos/{id}/motivoIndisponivel
+    MOTIVOS: [
+      { value: 'ferias',      label: 'Férias' },
+      { value: 'falta',       label: 'Falta' },
+      { value: 'licenca',     label: 'Licença médica' },
+      { value: 'outro_turno', label: 'Em outro turno' },
+      { value: 'outro',       label: 'Outro motivo' }
+    ]
   };
 
   /* ── ESTADO GLOBAL ─────────────────────────────────────── */
@@ -1261,18 +1271,27 @@ const NIT_PLANOP = (() => {
         .filter(([,r]) => r.status !== 'desligado')
         .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'));
 
-      const disponiveis = todos.filter(([,r]) => r.status === 'disponivel');
-      const escalados   = todos.filter(([,r]) => r.status === 'escalado');
-      const ausentes    = todos.filter(([,r]) => r.status === 'ausente');
+      const disponiveis    = todos.filter(([,r]) => r.status === 'disponivel');
+      const escalados      = todos.filter(([,r]) => r.status === 'escalado');
+      const indisponiveis  = todos.filter(([,r]) => r.status === 'indisponivel');
+      const ausentes       = todos.filter(([,r]) => r.status === 'ausente');
 
       if (count) count.textContent = disponiveis.length;
 
-      const filtrar = arr => busca ? arr.filter(([,r]) =>
-        (r.nome||'').toLowerCase().includes(busca)) : arr;
+      const filtrar = arr => busca
+        ? arr.filter(([,r]) => (r.nome||'').toLowerCase().includes(busca))
+        : arr;
 
-      const rowHTML = ([rId,r], muted=false) => {
+      const motivoLabel = r => {
+        if (r.status !== 'indisponivel') return '';
+        const m = CFG.MOTIVOS.find(m => m.value === r.motivoIndisponivel);
+        return m ? m.label : 'Indisponível';
+      };
+
+      const rowHTML = ([rId, r], muted=false) => {
         const posto = Object.entries(S.postos).find(([,p]) => p.orientadores?.[rId]);
         const postoInfo = posto ? `→ [${posto[1].numero||'?'}]` : '';
+        const motivo    = motivoLabel(r);
         return `<div class="staff-row ${muted?'muted':''}"
           draggable="${!muted}"
           ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"
@@ -1284,32 +1303,46 @@ const NIT_PLANOP = (() => {
           <div class="staff-info">
             <div class="staff-nome">${esc(titleCase(r.nome||rId))}</div>
             ${postoInfo ? `<div class="staff-sub">${esc(postoInfo)}</div>` : ''}
+            ${motivo ? `<div class="staff-sub staff-motivo">${esc(motivo)}</div>` : ''}
           </div>
-          <span class="staff-cargo-pill">${esc((CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || r.cargo?.slice(0,3)?.toUpperCase() || 'ORI'))}</span>
-          <span class="staff-dot ${r.status}"></span>
+          <span class="staff-cargo-pill">${esc(CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || r.cargo?.slice(0,3)?.toUpperCase() || 'ORI')}</span>
+          ${canWrite() ? `
+          <button class="staff-status-btn staff-dot ${r.status}"
+            onclick="NIT_PLANOP.UI.abrirStatusPessoa(event,'${rId}')"
+            title="Alterar status"></button>` :
+          `<span class="staff-dot ${r.status}"></span>`}
         </div>`;
       };
 
-      const dispFilt = filtrar(disponiveis);
-      const escFilt  = filtrar(escalados);
-      const ausFilt  = filtrar(ausentes);
+      const dispFilt  = filtrar(disponiveis);
+      const escFilt   = filtrar(escalados);
+      const indFilt   = filtrar(indisponiveis);
+      const ausFilt   = filtrar(ausentes);
 
       lista.innerHTML = `
-        ${dispFilt.length ? `<div class="staff-group-label">
-          Disponíveis <span>${dispFilt.length}</span>
-        </div>${dispFilt.map(e => rowHTML(e)).join('')}` : ''}
-        ${escFilt.length ? `<div class="staff-group-label" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px">
-          Em posto <span>${escFilt.length}</span>
-        </div>${escFilt.map(e => rowHTML(e, true)).join('')}` : ''}
-        ${ausFilt.length ? `<details style="margin-top:4px">
-          <summary style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);padding:6px 16px;cursor:pointer">
-            Ausentes (${ausFilt.length})
-          </summary>
-          ${ausFilt.map(e => rowHTML(e, true)).join('')}
-        </details>` : ''}
-        ${!dispFilt.length && !escFilt.length && !ausFilt.length
+        ${dispFilt.length ? `
+          <div class="staff-group-label">Disponíveis <span>${dispFilt.length}</span></div>
+          ${dispFilt.map(e => rowHTML(e)).join('')}` : ''}
+        ${escFilt.length ? `
+          <div class="staff-group-label" style="margin-top:4px">
+            Em posto <span>${escFilt.length}</span>
+          </div>
+          ${escFilt.map(e => rowHTML(e, true)).join('')}` : ''}
+        ${indFilt.length ? `
+          <div class="staff-group-label" style="margin-top:4px;color:var(--warning)">
+            Indisponíveis <span>${indFilt.length}</span>
+          </div>
+          ${indFilt.map(e => rowHTML(e, true)).join('')}` : ''}
+        ${ausFilt.length ? `
+          <details style="margin-top:4px">
+            <summary style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);padding:6px 16px;cursor:pointer">
+              Ausentes (${ausFilt.length})
+            </summary>
+            ${ausFilt.map(e => rowHTML(e, true)).join('')}
+          </details>` : ''}
+        ${!dispFilt.length && !escFilt.length && !indFilt.length && !ausFilt.length
           ? `<div style="padding:16px;font-size:11px;color:var(--text-muted);text-align:center">
-               Nenhum recurso cadastrado
+              Nenhum recurso cadastrado
              </div>` : ''}`;
     },
 
@@ -1460,6 +1493,54 @@ const NIT_PLANOP = (() => {
         return;
       }
       NIT_PLANOP.Actions.addOrientador(postoId, rId);
+    },
+
+    abrirStatusPessoa(event, rId) {
+      event.stopPropagation();
+      document.querySelectorAll('.status-popover').forEach(p => p.remove());
+
+      const r   = S.recursos[rId];
+      if (!r) return;
+
+      const popHTML = `
+        <div class="status-popover" id="sp-${rId}" onclick="event.stopPropagation()">
+          <div class="sp-titulo">${esc(titleCase(r.nome||rId))}</div>
+          <div class="sp-opcoes">
+            <button class="sp-opt ${r.status==='disponivel'?'active':''}"
+              onclick="NIT_PLANOP.Actions.setStatusPessoa('${rId}','disponivel')">
+              <span class="sp-dot disponivel"></span> Disponível
+            </button>
+            <button class="sp-opt ${r.status==='indisponivel'?'active':''}"
+              onclick="NIT_PLANOP.UI.mostrarMotivos('${rId}')">
+              <span class="sp-dot indisponivel"></span> Indisponível ▸
+            </button>
+          </div>
+          <div class="sp-motivos hidden" id="sp-motivos-${rId}">
+            ${CFG.MOTIVOS.map(m => `
+              <button class="sp-motivo-opt ${r.motivoIndisponivel===m.value?'active':''}"
+                onclick="NIT_PLANOP.Actions.setStatusPessoa('${rId}','indisponivel','${m.value}')">
+                ${esc(m.label)}
+              </button>`).join('')}
+          </div>
+        </div>`;
+
+      const btn = event.currentTarget;
+      const r2  = btn.getBoundingClientRect();
+      const pop = document.createElement('div');
+      pop.innerHTML = popHTML;
+      const el = pop.firstElementChild;
+      document.body.appendChild(el);
+
+      // Posicionar à esquerda do botão
+      el.style.position = 'fixed';
+      el.style.top      = `${r2.top}px`;
+      el.style.right    = `${window.innerWidth - r2.left + 8}px`;
+      el.style.zIndex   = 'var(--z-dropdown)';
+    },
+
+    mostrarMotivos(rId) {
+      const motivos = document.getElementById(`sp-motivos-${rId}`);
+      if (motivos) motivos.classList.toggle('hidden');
     },
 
     filtrarStaff(val) {
@@ -1849,6 +1930,28 @@ const NIT_PLANOP = (() => {
       toast('Operação criada!', 'success');
     },
 
+    async setStatusPessoa(rId, status, motivo = '') {
+      document.querySelectorAll('.status-popover').forEach(p => p.remove());
+      const updates = { status, updatedAt: Date.now() };
+      if (status === 'indisponivel') {
+        updates.motivoIndisponivel = motivo;
+      } else {
+        updates.motivoIndisponivel = null;
+      }
+      await S.db.ref(`efetivo/recursos/${rId}`).update(updates);
+      // Update otimista
+      if (S.recursos[rId]) {
+        S.recursos[rId].status = status;
+        S.recursos[rId].motivoIndisponivel = motivo || null;
+      }
+      UI.renderRightPanel();
+      const r = S.recursos[rId];
+      const label = status === 'indisponivel'
+        ? `${titleCase(r?.nome||'')} → Indisponível`
+        : `${titleCase(r?.nome||'')} → Disponível`;
+      toast(label, status === 'disponivel' ? 'success' : 'warning');
+    },
+
     async confirmarAddMembro() {
       const nomInp  = $('membro-nome-input');
       const recursoId = nomInp?.dataset.selectedValue || '';
@@ -1975,6 +2078,7 @@ const NIT_PLANOP = (() => {
     }
     $('nop-bairro-list')?.classList.remove('open');
     UI._fecharTodosMenus?.();
+    document.querySelectorAll('.status-popover').forEach(p => p.remove());
   });
 
   /* ── INICIALIZAÇÃO ─────────────────────────────────────── */
