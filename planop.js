@@ -118,6 +118,17 @@ const NIT_PLANOP = (() => {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const upper = str => String(str||'').toUpperCase().trim();
+
+  // Title case para exibição — preposições e conjunções em minúsculo.
+  // Aplicado na camada de display, não no banco — dados permanecem
+  // em MAIÚSCULO para consistência com o relatório mensal da AMC.
+  const PREP = new Set(['de','do','da','dos','das','e','a','o','em',
+                        'no','na','nos','nas','por','para','com','x']);
+  const titleCase = str => String(str||'').toLowerCase()
+    .split(' ')
+    .map((w, i) => (i === 0 || !PREP.has(w))
+      ? w.charAt(0).toUpperCase() + w.slice(1) : w)
+    .join(' ');
   const vibrar = ms => navigator.vibrate?.(ms);
 
   const getDataHoje = () => {
@@ -785,7 +796,7 @@ const NIT_PLANOP = (() => {
                title="Remover">×</button>` : '';
         return `<div class="supervisao-membro">
           <span class="supervisao-dot"></span>
-          <span class="supervisao-nome">${esc(m.nome)}${fixoIcon}</span>
+          <span class="supervisao-nome">${esc(titleCase(m.nome))}${fixoIcon}</span>
           <span class="supervisao-cargo">${esc(m.cargo)}</span>
           ${removeBtn}
         </div>`;
@@ -819,8 +830,8 @@ const NIT_PLANOP = (() => {
         return `<div class="ops-item ${ativo}" onclick="NIT_PLANOP.UI.selOp('${id}')">
           <div class="ops-item-icon">${icon}</div>
           <div class="ops-item-body">
-            <div class="ops-item-name">${esc(op.nome||'—')}</div>
-            <div class="ops-item-sub">${esc(sub)}</div>
+            <div class="ops-item-name">${esc(titleCase(op.nome||'—'))}</div>
+            <div class="ops-item-sub">${esc([titleCase(op.bairro||''), nPostos+' posto'+(nPostos!==1?'s':''), op.horario?op.horario+'h':''].filter(Boolean).join(' · '))}</div>
           </div>
           <span class="ops-status-dot ${dot}"></span>
         </div>`;
@@ -898,11 +909,11 @@ const NIT_PLANOP = (() => {
           <div class="op-topbar-icon">${opIcon(op.tipoMissao)}</div>
           <div class="op-topbar-info">
             <div class="op-topbar-name">
-              ${esc(op.nome||'—')}
+              ${esc(titleCase(op.nome||'—'))}
               <span class="badge-ativo">ATIVO</span>
             </div>
             <div class="op-topbar-sub">
-              ${[op.bairro, op.horario?op.horario+'h':'', op.tipoMissao||'']
+              ${[titleCase(op.bairro||''), op.horario?op.horario+'h':'', titleCase(op.tipoMissao||'')]
                 .filter(Boolean).map(esc).join(' · ')}
             </div>
           </div>
@@ -969,8 +980,9 @@ const NIT_PLANOP = (() => {
     _qruCardHTML(postoId, posto) {
       const orientadores = Object.entries(posto.orientadores||{});
       const status = orientadores.length===0 ? 'vazio' : 'parcial';
-      const badgeText = status==='vazio' ? 'VAZIO'
-        : `PARCIAL ${orientadores.length} PESSOA${orientadores.length!==1?'S':''}`;
+      const badgeText = status==='vazio'
+        ? 'Vazio'
+        : `${orientadores.length} pessoa${orientadores.length!==1?'s':''}`;
 
       const chipsHTML = orientadores.map(([rId,ori]) => {
         const nome = ori.nome || rId;
@@ -1007,8 +1019,8 @@ const NIT_PLANOP = (() => {
         <div class="qru-card-header" onclick="NIT_PLANOP.UI.toggleQru('${postoId}')">
           <span class="qru-num">${posto.numero||'?'}</span>
           <div class="qru-addr-wrap">
-            <div class="qru-addr">${esc(posto.local||'—')}</div>
-            <div class="qru-sub">${[posto.bairro,posto.tipoAcao].filter(Boolean).map(esc).join(' · ')}</div>
+            <div class="qru-addr">${esc(titleCase(posto.local||'—'))}</div>
+            <div class="qru-sub">${[titleCase(posto.bairro||''), titleCase(posto.tipoAcao||'')].filter(Boolean).map(esc).join(' · ')}</div>
           </div>
           <span class="qru-badge ${status}">${badgeText}</span>
           <svg class="qru-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -1033,7 +1045,7 @@ const NIT_PLANOP = (() => {
             </div>
             <div class="detalhes-row">
               <span class="detalhes-key">Tipo de ação</span>
-              <span class="detalhes-val">${esc(posto.tipoAcao||'CONTROLE')}</span>
+              <span class="detalhes-val">${esc(titleCase(posto.tipoAcao||'Controle'))}</span>
             </div>
             <div class="detalhes-row" style="flex-direction:column;gap:4px">
               <span class="detalhes-key">Observação</span>
@@ -1257,7 +1269,7 @@ const NIT_PLANOP = (() => {
             ${avatarInitials(r.nome)}
           </div>
           <div class="staff-info">
-            <div class="staff-nome">${esc(r.nome||rId)}</div>
+            <div class="staff-nome">${esc(titleCase(r.nome||rId))}</div>
             ${postoInfo ? `<div class="staff-sub">${esc(postoInfo)}</div>` : ''}
           </div>
           <span class="staff-cargo-pill">${esc((r.cargo||'ORI').slice(0,3).toUpperCase())}</span>
@@ -1599,16 +1611,16 @@ const NIT_PLANOP = (() => {
           return `<div class="campo-qth-destaque">
             <div class="campo-zona-onde">
               <div class="campo-zona-onde-label">QTH · ONDE</div>
-              <div class="campo-qth-valor">${esc(p.local||'—')}</div>
-              <div class="campo-qth-bairro">${esc(p.bairro||op.bairro||'')}</div>
+              <div class="campo-qth-valor">${esc(titleCase(p.local||'—'))}</div>
+              <div class="campo-qth-bairro">${esc(titleCase(p.bairro||op.bairro||''))}</div>
               <a href="${url}" target="_blank" rel="noopener" class="btn-maps">
                 📍 Abrir no Maps
               </a>
             </div>
             <div class="campo-zona-oque">
               <div class="campo-qtu-num">QRU Nº ${p.numero||'?'} · O QUÊ</div>
-              <div class="campo-acao-badge">${esc(p.tipoAcao||'CONTROLE')}</div>
-              ${op.nome ? `<div class="campo-op-nome">${esc(op.nome)}${op.horario?` · ${op.horario}h`:''}</div>` : ''}
+              <div class="campo-acao-badge">${esc(titleCase(p.tipoAcao||'Controle'))}</div>
+              ${op.nome ? `<div class="campo-op-nome">${esc(titleCase(op.nome))}${op.horario?` · ${op.horario}h`:''}</div>` : ''}
             </div>
           </div>`;
         }).join('');
@@ -1616,12 +1628,12 @@ const NIT_PLANOP = (() => {
 
       cont.innerHTML = `<div class="campo-card">
         <div class="campo-recurso-header">
-          <div class="campo-nome">${esc(r.nome)}</div>
+          <div class="campo-nome">${esc(titleCase(r.nome))}</div>
           <div class="campo-mat">Mat: ${esc(r.matricula||'—')} · ${esc(r.cargo||'—')}</div>
         </div>
         ${corpo}
         ${supInfo ? `<div class="campo-supervisor">
-          <span>Supervisor: ${esc(supInfo.nome||'')}</span>
+          <span>Supervisor: ${esc(titleCase(supInfo.nome||''))}</span>
           <a href="tel:${esc(supInfo.contato)}" class="campo-tel">📞 ${esc(supInfo.contato)}</a>
         </div>` : ''}
         ${escala ? `<div class="campo-turno-info">
