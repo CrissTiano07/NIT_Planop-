@@ -1022,6 +1022,37 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .staff-dot.escalado   { background: var(--accent); }
 .staff-dot.ausente    { background: var(--danger); }
 
+/* Menus de contexto — operação (sidebar) e posto (card) */
+.ops-item-menu-wrap { position: relative; flex-shrink: 0; }
+.btn-ops-menu {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; padding: 4px 6px; cursor: pointer;
+  border-radius: var(--radius); line-height: 1;
+  transition: color var(--dur-fast), background var(--dur-fast);
+  min-width: 28px; min-height: 28px;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-ops-menu:hover { color: var(--text-primary); background: var(--surface-hover); }
+.ops-ctx-menu {
+  position: absolute; right: 0; top: calc(100% + 4px);
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: var(--z-dropdown); overflow: hidden;
+}
+.ops-ctx-menu button {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 100%; padding: 9px 14px;
+  background: none; border: none; border-bottom: 1px solid var(--border);
+  font-size: 12px; color: var(--text-secondary); cursor: pointer; text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.ops-ctx-menu button:last-child { border-bottom: none; }
+.ops-ctx-menu button:hover { background: var(--surface-hover); color: var(--text-primary); }
+.ops-ctx-menu button.danger { color: var(--danger); }
+.ops-ctx-menu button.danger:hover { background: var(--danger-dim); }
+.qru-card-header { position: relative; }
+
 /* Drop zone ativa nos QRU cards durante drag */
 .qru-card.drag-over {
   outline: 2px solid var(--accent);
