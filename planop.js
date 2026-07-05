@@ -1288,59 +1288,65 @@ const NIT_PLANOP = (() => {
         return m ? m.label : 'Indisponível';
       };
 
-      const rowHTML = ([rId, r], muted=false) => {
-        const posto = Object.entries(S.postos).find(([,p]) => p.orientadores?.[rId]);
-        const postoInfo = posto ? `→ [${posto[1].numero||'?'}]` : '';
-        const motivo    = motivoLabel(r);
-        return `<div class="staff-row ${muted?'muted':''}"
-          draggable="${!muted}"
-          ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"
-          ondragend="NIT_PLANOP.UI.dragEndStaff(event)"
-          ${canWrite() && !muted ? `onclick="NIT_PLANOP.UI.abrirStatusPessoa(event,'${rId}')"` : ''}>
-          <span class="staff-drag-handle" aria-hidden="true"
-            onclick="event.stopPropagation()">⠿</span>
+      const rowHTML = ([rId, r], opts = {}) => {
+        const { canDrag = true, canClick = true } = opts;
+        const posto   = Object.entries(S.postos).find(([,p]) => p.orientadores?.[rId]);
+        const cargo   = CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || r.cargo?.slice(0,3)?.toUpperCase() || 'ORI';
+        const subLine = posto
+          ? `${cargo} → [${posto[1].numero||'?'}]`
+          : (motivoLabel(r) || cargo);
+        const hasMotivo = !!motivoLabel(r);
+        return `<div class="staff-row ${r.status}"
+          ${canDrag ? 'draggable="true"' : ''}
+          ${canDrag ? `ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"` : ''}
+          ${canDrag ? `ondragend="NIT_PLANOP.UI.dragEndStaff(event)"` : ''}
+          ${canWrite() && canClick ? `onclick="NIT_PLANOP.UI.abrirStatusPessoa(event,'${rId}')"` : ''}>
           <div class="staff-avatar" style="background:${avatarColor(r.nome)}" aria-hidden="true">
             ${avatarInitials(r.nome)}
           </div>
           <div class="staff-info">
             <div class="staff-nome">${esc(titleCase(r.nome||rId))}</div>
-            ${postoInfo ? `<div class="staff-sub">${esc(postoInfo)}</div>` : ''}
-            ${motivo ? `<div class="staff-sub staff-motivo">${esc(motivo)}</div>` : ''}
+            <div class="staff-sub-line${hasMotivo?' has-motivo':''}">${esc(subLine)}</div>
           </div>
-          <span class="staff-cargo-pill">${esc(CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || r.cargo?.slice(0,3)?.toUpperCase() || 'ORI')}</span>
           <span class="staff-dot ${r.status}"></span>
         </div>`;
       };
 
-      const dispFilt  = filtrar(disponiveis);
-      const escFilt   = filtrar(escalados);
-      const indFilt   = filtrar(indisponiveis);
-      const ausFilt   = filtrar(ausentes);
+      const dispFilt = filtrar(disponiveis);
+      const escFilt  = filtrar(escalados);
+      const indFilt  = filtrar(indisponiveis);
+      const ausFilt  = filtrar(ausentes);
 
       lista.innerHTML = `
         ${dispFilt.length ? `
-          <div class="staff-group-label">Disponíveis <span>${dispFilt.length}</span></div>
-          ${dispFilt.map(e => rowHTML(e)).join('')}` : ''}
+          <div class="staff-group-label disponivel-label">
+            Disponíveis <span>${dispFilt.length}</span>
+          </div>
+          ${dispFilt.map(e => rowHTML(e, { canDrag:true,  canClick:true  })).join('')}
+        ` : ''}
         ${escFilt.length ? `
-          <div class="staff-group-label" style="margin-top:4px">
+          <div class="staff-group-label">
             Em posto <span>${escFilt.length}</span>
           </div>
-          ${escFilt.map(e => rowHTML(e, true)).join('')}` : ''}
+          ${escFilt.map(e => rowHTML(e,  { canDrag:false, canClick:false })).join('')}
+        ` : ''}
         ${indFilt.length ? `
-          <div class="staff-group-label" style="margin-top:4px;color:var(--warning)">
+          <div class="staff-group-label warning-label">
             Indisponíveis <span>${indFilt.length}</span>
           </div>
-          ${indFilt.map(e => rowHTML(e, true)).join('')}` : ''}
+          ${indFilt.map(e => rowHTML(e,  { canDrag:false, canClick:true  })).join('')}
+        ` : ''}
         ${ausFilt.length ? `
-          <details style="margin-top:4px">
-            <summary style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--danger);padding:6px 16px;cursor:pointer">
-              Ausentes (${ausFilt.length})
+          <details>
+            <summary class="staff-group-label danger-label" style="list-style:none;cursor:pointer">
+              Ausentes <span>${ausFilt.length}</span>
             </summary>
-            ${ausFilt.map(e => rowHTML(e, true)).join('')}
-          </details>` : ''}
+            ${ausFilt.map(e => rowHTML(e, { canDrag:false, canClick:true  })).join('')}
+          </details>
+        ` : ''}
         ${!dispFilt.length && !escFilt.length && !indFilt.length && !ausFilt.length
           ? `<div style="padding:16px;font-size:11px;color:var(--text-muted);text-align:center">
-              Nenhum recurso cadastrado
+              Nenhum recurso encontrado
              </div>` : ''}`;
     },
 
