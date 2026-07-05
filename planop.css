@@ -690,9 +690,8 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   font-size: 10px; color: var(--text-muted); margin-top: 1px;
 }
 .qru-badge {
-  font-size: 9px; font-weight: 700; padding: 3px 8px;
-  border-radius: 20px; letter-spacing: 0.06em; flex-shrink: 0;
-  white-space: nowrap;
+  font-size: 11px; font-weight: 600; padding: 3px 10px;
+  border-radius: 20px; flex-shrink: 0; white-space: nowrap;
 }
 .qru-badge.vazio {
   background: var(--danger-dim); color: var(--danger);
