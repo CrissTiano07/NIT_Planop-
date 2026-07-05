@@ -834,6 +834,15 @@ const NIT_PLANOP = (() => {
             <div class="ops-item-sub">${esc([titleCase(op.bairro||''), nPostos+' posto'+(nPostos!==1?'s':''), op.horario?op.horario+'h':''].filter(Boolean).join(' · '))}</div>
           </div>
           <span class="ops-status-dot ${dot}"></span>
+          ${canWrite() ? `
+          <div class="ops-item-menu-wrap" onclick="event.stopPropagation()">
+            <button class="btn-ops-menu" onclick="NIT_PLANOP.UI.toggleOpsMenu('${id}',event)"
+              aria-label="Opções da operação">···</button>
+            <div class="ops-ctx-menu hidden" id="ops-menu-${id}">
+              <button onclick="NIT_PLANOP.UI.abrirEditOp('${id}')">✏ Editar</button>
+              <button class="danger" onclick="NIT_PLANOP.Actions.deletarOp('${id}')">🗑 Deletar</button>
+            </div>
+          </div>` : ''}
         </div>`;
       }).join('');
     },
@@ -1027,8 +1036,12 @@ const NIT_PLANOP = (() => {
             stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
-          <button class="btn-qru-menu" onclick="event.stopPropagation()"
+          <button class="btn-qru-menu" onclick="NIT_PLANOP.UI.togglePostoMenu('${postoId}',event)"
             aria-label="Mais opções">···</button>
+          <div class="ops-ctx-menu hidden" id="posto-menu-${postoId}">
+            <button onclick="NIT_PLANOP.UI.abrirEditPosto('${postoId}')">✏ Editar posto</button>
+            <button class="danger" onclick="NIT_PLANOP.Actions.deletarPosto('${postoId}')">🗑 Remover posto</button>
+          </div>
         </div>
         <div class="qru-body">
           <div class="orientadores-label">Orientadores designados</div>
@@ -1300,7 +1313,113 @@ const NIT_PLANOP = (() => {
              </div>` : ''}`;
     },
 
-    // ── DRAG & DROP — painel direito → QRU card ──────────────
+    // ── MENUS DE CONTEXTO ─────────────────────────────────────
+    _fecharTodosMenus() {
+      document.querySelectorAll('.ops-ctx-menu')
+        .forEach(m => m.classList.add('hidden'));
+    },
+
+    toggleOpsMenu(opId, event) {
+      event.stopPropagation();
+      const menu = document.getElementById(`ops-menu-${opId}`);
+      if (!menu) return;
+      const estaAberto = !menu.classList.contains('hidden');
+      UI._fecharTodosMenus();
+      if (!estaAberto) menu.classList.remove('hidden');
+    },
+
+    togglePostoMenu(postoId, event) {
+      event.stopPropagation();
+      const menu = document.getElementById(`posto-menu-${postoId}`);
+      if (!menu) return;
+      const estaAberto = !menu.classList.contains('hidden');
+      UI._fecharTodosMenus();
+      if (!estaAberto) menu.classList.remove('hidden');
+    },
+
+    // ── EDITAR OPERAÇÃO — form inline na sidebar ───────────────
+    abrirEditOp(opId) {
+      UI._fecharTodosMenus();
+      const op = S.operacoes[opId];
+      if (!op) return;
+
+      // Remove form anterior se existir
+      document.getElementById('edit-op-form')?.remove();
+
+      const opItem = document.querySelector(`#ops-lista .ops-item[onclick*="${opId}"]`);
+      if (!opItem) return;
+
+      const formHTML = `
+        <div id="edit-op-form" class="posto-form-inline" style="margin:4px 8px 8px">
+          <div class="posto-form-header">Editar operação</div>
+          <label class="form-label">Nome</label>
+          <input id="eop-nome" type="text" class="input-sm" value="${esc(op.nome||'')}">
+          <label class="form-label">Bairro</label>
+          <div class="combo-wrap">
+            <input id="eop-bairro" type="text" class="input-sm" value="${esc(op.bairro||'')}"
+              autocomplete="off">
+            <div id="eop-bairro-list" class="combo-drop"></div>
+          </div>
+          <label class="form-label">Horário <span class="form-hint">opcional</span></label>
+          <input id="eop-horario" type="time" class="input-sm" value="${esc(op.horario||'')}">
+          <div class="posto-form-footer">
+            <button class="btn-ghost-sm" onclick="document.getElementById('edit-op-form')?.remove()">Cancelar</button>
+            <button class="btn-accent-sm" onclick="NIT_PLANOP.Actions.salvarEditOp('${opId}')">Salvar</button>
+          </div>
+        </div>`;
+
+      opItem.insertAdjacentHTML('afterend', formHTML);
+
+      UI._combo('eop-bairro', 'eop-bairro-list',
+        CFG.BAIRROS.map(b => ({ value: b, label: b })),
+        (v) => { $('eop-bairro').value = v; }
+      );
+      setTimeout(() => $('eop-nome')?.focus(), 60);
+    },
+
+    // ── EDITAR POSTO — form inline no card ────────────────────
+    abrirEditPosto(postoId) {
+      UI._fecharTodosMenus();
+      const posto = S.postos[postoId];
+      if (!posto) return;
+
+      document.querySelectorAll('.edit-posto-form').forEach(f => f.remove());
+
+      const card = document.getElementById(`qru-${postoId}`);
+      if (!card) return;
+
+      const formHTML = `
+        <div class="edit-posto-form posto-form-inline" style="margin:8px 16px 8px">
+          <div class="posto-form-header">Editar posto Nº ${posto.numero}</div>
+          <label class="form-label">Endereço / Local *</label>
+          <input id="ep-local-${postoId}" type="text" class="input-sm"
+            value="${esc(posto.local||'')}" autocomplete="off">
+          <label class="form-label">Bairro</label>
+          <div class="combo-wrap">
+            <input id="ep-bairro-${postoId}" type="text" class="input-sm"
+              value="${esc(posto.bairro||'')}" autocomplete="off">
+            <div id="ep-bairro-list-${postoId}" class="combo-drop"></div>
+          </div>
+          <label class="form-label">Observação <span class="form-hint">opcional</span></label>
+          <input id="ep-obs-${postoId}" type="text" class="input-sm" value="${esc(posto.obs||'')}">
+          <div class="posto-form-footer">
+            <button class="btn-ghost-sm"
+              onclick="this.closest('.edit-posto-form')?.remove()">Cancelar</button>
+            <button class="btn-accent-sm"
+              onclick="NIT_PLANOP.Actions.salvarEditPosto('${postoId}')">Salvar</button>
+          </div>
+        </div>`;
+
+      card.insertAdjacentHTML('beforeend', formHTML);
+
+      UI._combo(`ep-bairro-${postoId}`, `ep-bairro-list-${postoId}`,
+        CFG.BAIRROS.map(b => ({ value: b, label: b })),
+        (v) => { $(`ep-bairro-${postoId}`).value = v; }
+      );
+      setTimeout(() => document.getElementById(`ep-local-${postoId}`)?.focus(), 60);
+    },
+
+
     dragStartStaff(event, rId) {
       // setData é obrigatório para Safari — sem ele o drag não funciona
       event.dataTransfer.setData('text/plain', rId);
@@ -1771,6 +1890,72 @@ const NIT_PLANOP = (() => {
       toast(`Padrão ${turnoLabel(escala)} salvo!`, 'success');
     },
 
+    async salvarEditOp(opId) {
+      const nome   = $('eop-nome')?.value.trim();
+      const bairro = $('eop-bairro')?.value.trim();
+      const horario = $('eop-horario')?.value;
+      if (!nome) { toast('Nome é obrigatório', 'warning'); return; }
+      await S.db.ref(`efetivo/operacoes/${opId}`).update({
+        nome: upper(nome), bairro: upper(bairro||''), horario: horario||'',
+        updatedAt: Date.now()
+      });
+      document.getElementById('edit-op-form')?.remove();
+      toast('Operação atualizada', 'success');
+    },
+
+    async salvarEditPosto(postoId) {
+      const local  = document.getElementById(`ep-local-${postoId}`)?.value.trim();
+      const bairro = document.getElementById(`ep-bairro-${postoId}`)?.value.trim();
+      const obs    = document.getElementById(`ep-obs-${postoId}`)?.value.trim();
+      if (!local) { toast('Endereço é obrigatório', 'warning'); return; }
+      await S.db.ref(`efetivo/postos/${postoId}`).update({
+        local: upper(local), bairro: upper(bairro||''), obs: upper(obs||''),
+        updatedAt: Date.now()
+      });
+      document.querySelector(`.edit-posto-form`)?.remove();
+      toast('Posto atualizado', 'success');
+    },
+
+    async deletarOp(opId) {
+      UI._fecharTodosMenus();
+      const op = S.operacoes[opId];
+      if (!op) return;
+      const nPostos = Object.values(S.postos).filter(p => p.operacaoId === opId).length;
+      const msg = nPostos > 0
+        ? `Deletar "${titleCase(op.nome)}"?\n\n${nPostos} posto(s) serão removidos junto e os orientadores liberados.`
+        : `Deletar "${titleCase(op.nome)}"?`;
+      if (!confirm(msg)) return;
+      vibrar([60,40,60]);
+      // Remover postos e liberar orientadores
+      const postosOp = Object.entries(S.postos).filter(([,p]) => p.operacaoId === opId);
+      for (const [pid, posto] of postosOp) {
+        for (const rId of Object.keys(posto.orientadores||{})) {
+          const emOutro = Object.entries(S.postos)
+            .some(([id2,p2]) => id2!==pid && p2.orientadores?.[rId]);
+          if (!emOutro) await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
+        }
+        await S.db.ref(`efetivo/postos/${pid}`).remove();
+      }
+      await S.db.ref(`efetivo/operacoes/${opId}`).remove();
+      if (S.operacaoSel === opId) S.operacaoSel = null;
+      toast('Operação deletada', 'info');
+    },
+
+    async deletarPosto(postoId) {
+      UI._fecharTodosMenus();
+      const posto = S.postos[postoId];
+      if (!posto) return;
+      if (!confirm(`Remover o posto Nº ${posto.numero}?\n\nOs orientadores designados serão liberados.`)) return;
+      vibrar(60);
+      for (const rId of Object.keys(posto.orientadores||{})) {
+        const emOutro = Object.entries(S.postos)
+          .some(([id2,p2]) => id2!==postoId && p2.orientadores?.[rId]);
+        if (!emOutro) await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
+      }
+      await S.db.ref(`efetivo/postos/${postoId}`).remove();
+      toast('Posto removido', 'info');
+    },
+
     async salvarObs(postoId, val) {
       await S.db.ref(`efetivo/postos/${postoId}/obs`).set(val.trim());
     }
@@ -1789,6 +1974,7 @@ const NIT_PLANOP = (() => {
       S._dropAberto = null;
     }
     $('nop-bairro-list')?.classList.remove('open');
+    UI._fecharTodosMenus?.();
   });
 
   /* ── INICIALIZAÇÃO ─────────────────────────────────────── */
