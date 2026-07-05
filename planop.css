@@ -1018,9 +1018,70 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .staff-dot {
   width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
 }
-.staff-dot.disponivel { background: var(--success); }
-.staff-dot.escalado   { background: var(--accent); }
-.staff-dot.ausente    { background: var(--danger); }
+.staff-dot.disponivel   { background: var(--success); }
+.staff-dot.escalado     { background: var(--accent); }
+.staff-dot.indisponivel { background: var(--warning); }
+.staff-dot.ausente      { background: var(--danger); }
+
+.staff-status-btn {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: none; cursor: pointer; flex-shrink: 0;
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+  padding: 0;
+}
+.staff-status-btn:hover {
+  transform: scale(1.6);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.12);
+}
+
+.staff-motivo {
+  color: var(--warning) !important;
+  font-style: italic;
+}
+
+/* Popover de status com motivo */
+.status-popover {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  animation: fadeIn var(--dur-fast);
+}
+.sp-titulo {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--border); margin-bottom: var(--space-1);
+}
+.sp-opcoes { display: flex; flex-direction: column; gap: 2px; }
+.sp-opt {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 7px var(--space-2); border-radius: var(--radius);
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--text-secondary); text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast); width: 100%;
+}
+.sp-opt:hover { background: var(--surface-hover); color: var(--text-primary); }
+.sp-opt.active { color: var(--text-primary); font-weight: 600; }
+.sp-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.sp-motivos {
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-1); padding-top: var(--space-1);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sp-motivo-opt {
+  padding: 6px var(--space-2) 6px 28px;
+  border-radius: var(--radius); background: none; border: none;
+  cursor: pointer; font-size: 11px; color: var(--text-muted);
+  text-align: left; width: 100%;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.sp-motivo-opt:hover { background: var(--surface-hover); color: var(--text-primary); }
+.sp-motivo-opt.active { color: var(--warning); font-weight: 600; }
+
 
 /* Menus de contexto — operação (sidebar) e posto (card) */
 .ops-item-menu-wrap { position: relative; flex-shrink: 0; }
