@@ -87,12 +87,15 @@ const NIT_PLANOP = (() => {
       'default':                 `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
     },
 
-    // Lifecycle de operação — terreno preparado para o sistema de duas camadas.
-    // Quando op.status for implementado na UI, substituir os dots da sidebar.
-    LIFECYCLE_COLORS: {
-      planejada:  'var(--lifecycle-pending)',
-      ativa:      'var(--lifecycle-active)',
-      concluida:  'var(--lifecycle-done)'
+    // Abreviações de cargo — mapa explícito, não string slice.
+    // Adicionar OPERADOR quando o cargo for confirmado no sistema.
+    CARGO_ABBR: {
+      'SUPERVISOR':   'SUP',
+      'AUXILIAR':     'AUX',
+      'MOTOCICLISTA': 'MOT',
+      'MONITOR':      'MON',
+      'ORIENTADOR':   'ORI',
+      'OPERADOR':     'OPE'   // preparado — confirmar se substitui ou coexiste
     }
   };
 
@@ -990,7 +993,7 @@ const NIT_PLANOP = (() => {
         const nomeDisplay = nome.split(' ')
           .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
           .join(' ');
-        const cargo = (ori.cargo || 'ORI').slice(0,3).toUpperCase();
+        const cargo = (CFG.CARGO_ABBR[ori.cargo?.toUpperCase()] || ori.cargo?.slice(0,3)?.toUpperCase() || 'ORI');
         const cor   = avatarColor(nome);
         const ini   = avatarInitials(nome);
         return `<div class="orientador-chip">
@@ -1272,7 +1275,7 @@ const NIT_PLANOP = (() => {
             <div class="staff-nome">${esc(titleCase(r.nome||rId))}</div>
             ${postoInfo ? `<div class="staff-sub">${esc(postoInfo)}</div>` : ''}
           </div>
-          <span class="staff-cargo-pill">${esc((r.cargo||'ORI').slice(0,3).toUpperCase())}</span>
+          <span class="staff-cargo-pill">${esc((CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || r.cargo?.slice(0,3)?.toUpperCase() || 'ORI'))}</span>
           <span class="staff-dot ${r.status}"></span>
         </div>`;
       };
