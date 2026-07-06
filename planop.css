@@ -320,14 +320,32 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   transition: opacity var(--dur-fast);
 }
 .btn-add-membro:hover { opacity: 0.8; }
+.supervisao-cargo-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 2px 7px; border-radius: 4px;
+  background: var(--bg-card); border: 1px solid var(--border-strong);
+  color: var(--text-tertiary); text-transform: uppercase;
+  flex-shrink: 0;
+}
+.supervisao-cargo-badge.cargo-sup {
+  background: var(--accent-dim); border-color: var(--accent);
+  color: var(--accent);
+}
+.supervisao-remove-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 14px; cursor: pointer; padding: 0 2px; line-height: 1;
+  opacity: 0.5; transition: opacity var(--dur-fast), color var(--dur-fast);
+  min-width: 20px; display: flex; align-items: center; justify-content: center;
+}
+.supervisao-remove-btn:hover { opacity: 1; color: var(--danger); }
 .btn-salvar-padrao {
   display: block; background: none; border: none;
-  color: var(--text-muted); font-size: 10px;
-  padding: var(--space-1) 0;
-  text-decoration: underline; text-underline-offset: 2px;
-  transition: color var(--dur-fast);
+  color: var(--accent); font-size: 11px; font-weight: 600;
+  padding: var(--space-2) 0; cursor: pointer;
+  opacity: 0.8; transition: opacity var(--dur-fast);
+  text-align: left;
 }
-.btn-salvar-padrao:hover { color: var(--text-tertiary); }
+.btn-salvar-padrao:hover { opacity: 1; }
 
 /* Nova operação */
 .sidebar-nova-op {
