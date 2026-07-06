@@ -263,8 +263,8 @@ const NIT_PLANOP = (() => {
     },
 
     logout() {
-      S._unsubs.forEach(fn => fn());
-      S._unsubs = [];
+      S._unsubs.forEach(fn => fn());      S._unsubs = [];
+      S._escalaUnsubs.forEach(fn => fn()); S._escalaUnsubs = [];
       firebase.auth().signOut();
     }
   };
@@ -689,13 +689,10 @@ const NIT_PLANOP = (() => {
     // Abre um mini-form inline dentro do card da operação.
     // Sem modal — o operador preenche sem perder o contexto visual.
     abrirAddPosto(opId) {
-      // Fechar qualquer form inline aberto anteriormente
       document.querySelectorAll('.posto-form-inline').forEach(el => el.remove());
 
-      const op        = S.operacoes[opId] || {};
-      const formId    = `posto-form-${opId}`;
-      const container = document.querySelector(`#qru-${opId.replace(/[^a-zA-Z0-9]/g,'\\$&')} .qrus-lista`)
-                     || document.getElementById('qrus-lista');
+      const op     = S.operacoes[opId] || {};
+      const formId = `posto-form-${opId}`;
 
       const formHTML = `
         <div class="posto-form-inline" id="${formId}">
@@ -1413,10 +1410,11 @@ const NIT_PLANOP = (() => {
       const op = S.operacoes[opId];
       if (!op) return;
 
-      // Remove form anterior se existir
       document.getElementById('edit-op-form')?.remove();
 
-      const opItem = document.querySelector(`#ops-lista .ops-item[onclick*="${opId}"]`);
+      // Bug 1 fix: o form de edição de operação fica na sidebar,
+      // abaixo do item da operação — não no painel principal
+      const opItem = document.querySelector(`#ops-lista .ops-item[onclick*="'${opId}'"]`);
       if (!opItem) return;
 
       const formHTML = `
@@ -1497,7 +1495,7 @@ const NIT_PLANOP = (() => {
       if (!card || !posto) return;
       const orientadores = Object.entries(posto.orientadores||{});
       const status       = orientadores.length===0 ? 'vazio' : 'parcial';
-      card.className = card.className.replace(/\bstatus-\w+\b/,'') + ` status-${status}`;
+      card.className = (card.className.replace(/\bstatus-\w+\b/g, '') + ` status-${status}`).trim();
       const badge = card.querySelector('.qru-badge');
       if (badge) {
         badge.className   = `qru-badge ${status}`;
@@ -2015,14 +2013,10 @@ const NIT_PLANOP = (() => {
         qruPessoas: 1
       });
 
-      // Designar orientador se foi selecionado — usando o ID correto do posto
-      if (postoId && alocacao?.id) {
-        if (alocacao.tipo === 'agente') {
-          await DB.adicionarOrientadorAoPosto(postoId, alocacao.id);
-        } else {
-          // Equipe: marcar a viatura como escalada no Firebase
-          await S.db.ref(`efetivo/viaturas/${alocacao.id}/status`).set('escalada');
-        }
+      if (postoId && alocacao?.id && alocacao.tipo === 'agente') {
+        await DB.adicionarOrientadorAoPosto(postoId, alocacao.id);
+      } else if (postoId && alocacao?.id && alocacao.tipo === 'equipe') {
+        await S.db.ref(`efetivo/viaturas/${alocacao.id}/status`).set('escalada');
       }
 
       UI.fecharAddPosto(opId);
