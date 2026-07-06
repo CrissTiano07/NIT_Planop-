@@ -486,7 +486,9 @@ const NIT_PLANOP = (() => {
         S.postos[postoId].orientadores[recursoId] = ori;
       }
       if (S.recursos[recursoId]) S.recursos[recursoId].status = 'escalado';
-      UI.renderMainContent();
+      // Update cirúrgico — não destrói o dropdown para permitir adicionar mais
+      UI._patchQruCard(postoId);
+      UI.renderOpsList();
       UI.renderRightPanel();
     },
 
@@ -497,14 +499,14 @@ const NIT_PLANOP = (() => {
       if (!emOutroPosto) {
         await S.db.ref(`efetivo/recursos/${recursoId}/status`).set('disponivel');
       }
-      // Update otimista
       if (S.postos[postoId]?.orientadores) {
         delete S.postos[postoId].orientadores[recursoId];
       }
       if (!emOutroPosto && S.recursos[recursoId]) {
         S.recursos[recursoId].status = 'disponivel';
       }
-      UI.renderMainContent();
+      UI._patchQruCard(postoId);
+      UI.renderOpsList();
       UI.renderRightPanel();
     },
 
@@ -789,25 +791,30 @@ const NIT_PLANOP = (() => {
       const count  = $('supervisao-count');
       if (!lista) return;
 
-      // Supervisores fixos + os do turno
+      const CARGO_ORDER = { SUPERVISOR:0, AUXILIAR:1, MOTOCICLISTA:2, MONITOR:3, ORIENTADOR:4 };
+
       const todos = [
         ...CFG.SUPERVISORES_FIXOS,
         ...S.supervisaoDoTurno.filter(m => !m.fixo)
-      ];
+      ].sort((a,b) =>
+        (CARGO_ORDER[a.cargo?.toUpperCase()]??99) - (CARGO_ORDER[b.cargo?.toUpperCase()]??99)
+      );
 
       if (count) count.textContent = `${todos.length} pessoa${todos.length!==1?'s':''}`;
 
       lista.innerHTML = todos.map(m => {
-        const fixoIcon = m.fixo
-          ? `<span class="supervisao-fixo-icon" title="Supervisor fixo — presente em todos os turnos">📌</span>` : '';
+        const fixoIcon  = m.fixo
+          ? `<span class="supervisao-fixo-icon" title="Supervisor fixo · presente em todos os turnos">📌</span>`
+          : '';
         const removeBtn = !m.fixo && canWrite()
-          ? `<button class="btn-icon-nav" style="min-width:20px;min-height:20px" 
-               onclick="NIT_PLANOP.Actions.removerMembro('${esc(m.id)}')" 
+          ? `<button class="supervisao-remove-btn"
+               onclick="NIT_PLANOP.Actions.removerMembro('${esc(m.id)}')"
                title="Remover">×</button>` : '';
+        const cargoClass = m.cargo?.toUpperCase() === 'SUPERVISOR' ? 'cargo-sup' : '';
         return `<div class="supervisao-membro">
           <span class="supervisao-dot"></span>
           <span class="supervisao-nome">${esc(titleCase(m.nome))}${fixoIcon}</span>
-          <span class="supervisao-cargo">${esc(m.cargo)}</span>
+          <span class="supervisao-cargo-badge ${cargoClass}">${esc(m.cargo||'—')}</span>
           ${removeBtn}
         </div>`;
       }).join('');
@@ -1317,34 +1324,34 @@ const NIT_PLANOP = (() => {
       const indFilt  = filtrar(indisponiveis);
       const ausFilt  = filtrar(ausentes);
 
+      const indAusFilt = filtrar([...indisponiveis, ...ausentes]);
+
       lista.innerHTML = `
         ${dispFilt.length ? `
-          <div class="staff-group-label disponivel-label">
-            Disponíveis <span>${dispFilt.length}</span>
-          </div>
-          ${dispFilt.map(e => rowHTML(e, { canDrag:true,  canClick:true  })).join('')}
-        ` : ''}
-        ${escFilt.length ? `
-          <div class="staff-group-label">
-            Em posto <span>${escFilt.length}</span>
-          </div>
-          ${escFilt.map(e => rowHTML(e,  { canDrag:false, canClick:false })).join('')}
-        ` : ''}
-        ${indFilt.length ? `
-          <div class="staff-group-label warning-label">
-            Indisponíveis <span>${indFilt.length}</span>
-          </div>
-          ${indFilt.map(e => rowHTML(e,  { canDrag:false, canClick:true  })).join('')}
-        ` : ''}
-        ${ausFilt.length ? `
-          <details>
-            <summary class="staff-group-label danger-label" style="list-style:none;cursor:pointer">
-              Ausentes <span>${ausFilt.length}</span>
+          <details open>
+            <summary class="staff-group-label disponivel-label" style="list-style:none;cursor:pointer">
+              Disponíveis <span>${dispFilt.length}</span>
             </summary>
-            ${ausFilt.map(e => rowHTML(e, { canDrag:false, canClick:true  })).join('')}
+            ${dispFilt.map(e => rowHTML(e, { canDrag:true, canClick:true })).join('')}
           </details>
         ` : ''}
-        ${!dispFilt.length && !escFilt.length && !indFilt.length && !ausFilt.length
+        ${escFilt.length ? `
+          <details open>
+            <summary class="staff-group-label" style="list-style:none;cursor:pointer">
+              Em posto <span>${escFilt.length}</span>
+            </summary>
+            ${escFilt.map(e => rowHTML(e, { canDrag:false, canClick:false })).join('')}
+          </details>
+        ` : ''}
+        ${indAusFilt.length ? `
+          <details>
+            <summary class="staff-group-label warning-label" style="list-style:none;cursor:pointer">
+              Ausentes/Indisponíveis <span>${indAusFilt.length}</span>
+            </summary>
+            ${indAusFilt.map(e => rowHTML(e, { canDrag:false, canClick:true })).join('')}
+          </details>
+        ` : ''}
+        ${!dispFilt.length && !escFilt.length && !indAusFilt.length
           ? `<div style="padding:16px;font-size:11px;color:var(--text-muted);text-align:center">
               Nenhum recurso encontrado
              </div>` : ''}`;
@@ -1456,6 +1463,55 @@ const NIT_PLANOP = (() => {
       setTimeout(() => document.getElementById(`ep-local-${postoId}`)?.focus(), 60);
     },
 
+
+    // ── UPDATE CIRÚRGICO — preserva dropdown aberto ───────────
+    _patchQruCard(postoId) {
+      const posto = S.postos[postoId];
+      const card  = document.getElementById(`qru-${postoId}`);
+      if (!card || !posto) return;
+      const orientadores = Object.entries(posto.orientadores||{});
+      const status       = orientadores.length===0 ? 'vazio' : 'parcial';
+      card.className = card.className.replace(/\bstatus-\w+\b/,'') + ` status-${status}`;
+      const badge = card.querySelector('.qru-badge');
+      if (badge) {
+        badge.className   = `qru-badge ${status}`;
+        badge.textContent = status==='vazio' ? 'Vazio'
+          : `${orientadores.length} pessoa${orientadores.length!==1?'s':''}`;
+      }
+      const chipsDiv = card.querySelector('.orientadores-chips');
+      if (chipsDiv) {
+        chipsDiv.innerHTML = orientadores.map(([rId,ori]) => {
+          const nome        = ori.nome || rId;
+          const nomeDisplay = nome.split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+          const cargo = (ori.cargo||'ORI').slice(0,3).toUpperCase();
+          return `<div class="orientador-chip">
+            <div class="chip-avatar" style="background:${avatarColor(nome)}">${avatarInitials(nome)}</div>
+            <span class="chip-nome">${esc(nomeDisplay)}</span>
+            <span class="chip-cargo">${esc(cargo)}</span>
+            ${canWrite() ? `<button class="orientador-chip-remove"
+              onclick="NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')"
+              title="Remover">×</button>` : ''}
+          </div>`;
+        }).join('');
+      }
+      UI._patchMetrics();
+    },
+
+    _patchMetrics() {
+      const postos     = Object.values(S.postos).filter(p => p.operacaoId === S.operacaoSel);
+      const semNinguem = postos.filter(p => !Object.keys(p.orientadores||{}).length).length;
+      const totalOri   = postos.reduce((s,p) => s+Object.keys(p.orientadores||{}).length,0);
+      const cobertura  = postos.length
+        ? Math.round(((postos.length-semNinguem)/postos.length)*100) : 0;
+      const nums = document.querySelectorAll('.metrica-num');
+      if (nums[0]) nums[0].textContent = postos.length;
+      if (nums[1]) { nums[1].textContent = semNinguem;
+        nums[1].className = `metrica-num ${semNinguem>0?'danger':'success'}`; }
+      if (nums[2]) nums[2].textContent = totalOri;
+      if (nums[3]) { nums[3].textContent = `${cobertura}%`;
+        nums[3].className = `metrica-num ${cobertura<100?'warning':'success'}`; }
+    },
 
     dragStartStaff(event, rId) {
       // setData é obrigatório para Safari — sem ele o drag não funciona
@@ -1850,13 +1906,24 @@ const NIT_PLANOP = (() => {
   /* ── ACTIONS ───────────────────────────────────────────── */
   const Actions = {
     async addOrientador(postoId, recursoId) {
-      // Fechar dropdown
-      const drop = document.getElementById(`drop-${postoId}`);
-      if (drop) drop.classList.remove('open');
-      S._dropAberto = null;
-
       await DB.adicionarOrientadorAoPosto(postoId, recursoId);
       vibrar(40);
+      // Atualizar itens do dropdown sem fechá-lo — permite adicionar mais
+      const bodyId = `drop-body-${postoId}`;
+      const body   = document.getElementById(bodyId);
+      if (body) {
+        const jaDesignados = Object.keys(S.postos[postoId]?.orientadores || {});
+        body.querySelectorAll('.orientador-drop-item').forEach(el => {
+          const id = el.dataset.id;
+          if (jaDesignados.includes(id)) {
+            el.classList.add('disabled');
+            el.onclick = null;
+          }
+        });
+        // Mover o item recém-designado para o final como grayed
+        const item = body.querySelector(`[data-id="${recursoId}"]`);
+        if (item) { item.classList.add('disabled'); item.onclick = null; }
+      }
       toast(`${S.recursos[recursoId]?.nome||'Orientador'} designado!`, 'success');
     },
 
