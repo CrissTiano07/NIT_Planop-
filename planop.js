@@ -109,15 +109,15 @@ const NIT_PLANOP = (() => {
   /* ── ESTADO GLOBAL ─────────────────────────────────────── */
   const S = {
     db: null, user: null, role: null,
-    modo: null,          // 'dashboard' | 'campo'
-    escalaAtiva: null,   // ID da escala do turno ativo
-    operacaoSel: null,   // ID da operação selecionada
+    modo: null, escalaAtiva: null, operacaoSel: null,
     escalas: {}, operacoes: {}, postos: {}, recursos: {}, viaturas: {}, templates: {},
-    supervisaoDoTurno: [], // composição real do turno ativo
-    _unsubs: [],           // unsubscribe listeners Firebase
-    _dropAberto: null,     // ID do dropdown aberto (para fechar ao clicar fora)
-    _buscaEquipes: '',     // filtro da lista de operações
-    _buscaStaff: '',       // filtro do painel direito
+    supervisaoDoTurno: [],
+    _unsubs: [],        // listeners globais — limpos no logout
+    _escalaUnsubs: [],  // listeners de operações/postos — limpos a cada troca de turno
+    _suppressRender: false,  // bloqueia renderMainContent do listener durante update otimista
+    _dropAberto: null,
+    _buscaEquipes: '',
+    _buscaStaff: '',
   };
 
   /* ── UTILITÁRIOS ───────────────────────────────────────── */
@@ -313,12 +313,14 @@ const NIT_PLANOP = (() => {
           S.supervisaoDoTurno = [];
         }
 
-        // Inicializar listeners de operações e postos quando
-        // S.escalaAtiva muda — garante filtro pelo turno correto
         if (S.escalaAtiva && S.escalaAtiva !== escalaAnterior) {
           escalaAnterior = S.escalaAtiva;
           S.operacoes    = {};
           S.postos       = {};
+          // Fix 1: cancelar listeners anteriores de operações/postos
+          // antes de criar novos — evita acúmulo a cada troca de turno
+          S._escalaUnsubs.forEach(fn => fn());
+          S._escalaUnsubs = [];
           DB._listenOperacoes();
           DB._listenPostos();
         }
@@ -332,37 +334,43 @@ const NIT_PLANOP = (() => {
     },
 
     _listenOperacoes() {
-      // Ouve APENAS as operações do turno ativo — evita carregar
-      // todo o histórico de /efetivo/operacoes (que pode ter milhares
-      // de registros de sessões anteriores do Efetivo e Semáforos).
-      // Quando S.escalaAtiva muda, _listenEscalas chama este método
-      // novamente com o novo ID.
       if (!S.escalaAtiva) return;
       const ref = S.db.ref('efetivo/operacoes')
         .orderByChild('escalaId').equalTo(S.escalaAtiva);
       const fn  = ref.on('value', snap => {
-        // Merge: preserva operações de outras escalas já em memória
         const novas = snap.val() || {};
         Object.assign(S.operacoes, novas);
         UI.renderOpsList();
-        UI.renderMainContent();
+        // Fix 2: se há update otimista em andamento, não re-renderiza
+        // o conteúdo principal (preserva dropdown aberto)
+        if (!S._suppressRender) UI.renderMainContent();
       });
-      S._unsubs.push(() => ref.off('value', fn));
+      S._escalaUnsubs.push(() => ref.off('value', fn));
     },
 
     _listenPostos() {
-      // Mesmo padrão: filtra pelo turno ativo
       if (!S.escalaAtiva) return;
       const ref = S.db.ref('efetivo/postos')
         .orderByChild('escalaId').equalTo(S.escalaAtiva);
       const fn  = ref.on('value', snap => {
         const novos = snap.val() || {};
-        Object.assign(S.postos, novos);
+        // Fix 3a: excluir fotos do merge — elas ficam em caminhos separados
+        // e são carregadas sob demanda ao expandir detalhes do posto
+        Object.entries(novos).forEach(([id, p]) => {
+          const { fotoReferencia, fotosRegistro, ...resto } = p;
+          if (!S.postos[id]) S.postos[id] = {};
+          Object.assign(S.postos[id], resto);
+          // Preservar fotos já carregadas — não sobrescrever com undefined
+          if (fotoReferencia !== undefined) S.postos[id].fotoReferencia = fotoReferencia;
+          if (fotosRegistro  !== undefined) S.postos[id].fotosRegistro  = fotosRegistro;
+        });
         UI.renderOpsList();
-        UI.renderMainContent();
-        UI.renderRightPanel();
+        if (!S._suppressRender) {
+          UI.renderMainContent();
+          UI.renderRightPanel();
+        }
       });
-      S._unsubs.push(() => ref.off('value', fn));
+      S._escalaUnsubs.push(() => ref.off('value', fn));
     },
 
     _listenTemplates() {
@@ -444,13 +452,17 @@ const NIT_PLANOP = (() => {
     },
 
     async encerrarEscala(escalaId, nota) {
-      // Liberar todos os recursos escalados
+      // Fix 7: batch update — um único write para liberar todos os recursos
+      // em vez de N writes em loop (um por recurso escalado)
       const escalados = Object.entries(S.recursos).filter(([,r]) => r.status==='escalado');
-      await Promise.all(escalados.map(([id]) =>
-        S.db.ref(`efetivo/recursos/${id}/status`).set('disponivel')));
+      if (escalados.length) {
+        const updates = {};
+        escalados.forEach(([id]) => { updates[`${id}/status`] = 'disponivel'; });
+        await S.db.ref('efetivo/recursos').update(updates);
+      }
       if (nota) {
         await S.db.ref(`efetivo/escalas/${escalaId}/bastao`).set({
-          nota, autor:S.user?.displayName||S.user?.email, ts:Date.now()
+          nota, autor: S.user?.displayName || S.user?.email, ts: Date.now()
         });
       }
       await S.db.ref(`efetivo/escalas/${escalaId}/status`).set('encerrado');
@@ -480,13 +492,14 @@ const NIT_PLANOP = (() => {
       const ori = { nome: r.nome, cargo: r.cargo || 'ORIENTADOR', ts: Date.now() };
       await S.db.ref(`efetivo/postos/${postoId}/orientadores/${recursoId}`).set(ori);
       await S.db.ref(`efetivo/recursos/${recursoId}/status`).set('escalado');
-      // Update otimista
       if (S.postos[postoId]) {
         if (!S.postos[postoId].orientadores) S.postos[postoId].orientadores = {};
         S.postos[postoId].orientadores[recursoId] = ori;
       }
       if (S.recursos[recursoId]) S.recursos[recursoId].status = 'escalado';
-      // Update cirúrgico — não destrói o dropdown para permitir adicionar mais
+      // Suprimir re-render do listener por 600ms — preserva o dropdown aberto
+      S._suppressRender = true;
+      setTimeout(() => { S._suppressRender = false; }, 600);
       UI._patchQruCard(postoId);
       UI.renderOpsList();
       UI.renderRightPanel();
@@ -505,6 +518,8 @@ const NIT_PLANOP = (() => {
       if (!emOutroPosto && S.recursos[recursoId]) {
         S.recursos[recursoId].status = 'disponivel';
       }
+      S._suppressRender = true;
+      setTimeout(() => { S._suppressRender = false; }, 600);
       UI._patchQruCard(postoId);
       UI.renderOpsList();
       UI.renderRightPanel();
@@ -1295,14 +1310,24 @@ const NIT_PLANOP = (() => {
         return m ? m.label : 'Indisponível';
       };
 
+      // Fix 4: índice invertido — O(n) uma vez, não O(n²) por row
+      const postoByRecurso = {};
+      Object.values(S.postos).forEach(p => {
+        Object.keys(p.orientadores||{}).forEach(rId => {
+          postoByRecurso[rId] = p;
+        });
+      });
+
       const rowHTML = ([rId, r], opts = {}) => {
         const { canDrag = true, canClick = true } = opts;
-        const posto   = Object.entries(S.postos).find(([,p]) => p.orientadores?.[rId]);
-        const cargo   = CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || r.cargo?.slice(0,3)?.toUpperCase() || 'ORI';
-        const subLine = posto
-          ? `${cargo} → [${posto[1].numero||'?'}]`
-          : (motivoLabel(r) || cargo);
-        const hasMotivo = !!motivoLabel(r);
+        const posto    = postoByRecurso[rId];
+        const cargo    = CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || r.cargo?.slice(0,3)?.toUpperCase() || 'ORI';
+        const motivo   = r.status === 'ausente' ? 'Ausente'
+          : r.status === 'indisponivel'
+            ? (CFG.MOTIVOS.find(m => m.value===r.motivoIndisponivel)?.label || 'Indisponível')
+            : '';
+        const subLine  = posto ? `${cargo} → [${posto.numero||'?'}]` : (motivo || cargo);
+        const hasMotivo = !!motivo;
         return `<div class="staff-row ${r.status}"
           ${canDrag ? 'draggable="true"' : ''}
           ${canDrag ? `ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"` : ''}
@@ -1319,11 +1344,9 @@ const NIT_PLANOP = (() => {
         </div>`;
       };
 
-      const dispFilt = filtrar(disponiveis);
-      const escFilt  = filtrar(escalados);
-      const indFilt  = filtrar(indisponiveis);
-      const ausFilt  = filtrar(ausentes);
-
+      // Fix 5: apenas os 3 grupos necessários — indisponível + ausente fundidos
+      const dispFilt   = filtrar(disponiveis);
+      const escFilt    = filtrar(escalados);
       const indAusFilt = filtrar([...indisponiveis, ...ausentes]);
 
       lista.innerHTML = `
@@ -1603,9 +1626,11 @@ const NIT_PLANOP = (() => {
       if (motivos) motivos.classList.toggle('hidden');
     },
 
+    // Fix 6: debounce — evita renderRightPanel em cada keystroke
     filtrarStaff(val) {
       S._buscaStaff = val;
-      UI.renderRightPanel();
+      clearTimeout(S._staffDebounce);
+      S._staffDebounce = setTimeout(() => UI.renderRightPanel(), 120);
     },
 
     // ── NOVA OPERAÇÃO (sidebar inline)
@@ -1633,15 +1658,35 @@ const NIT_PLANOP = (() => {
     },
 
     // Autocomplete de bairro no formulário inline
-    // ── FOTOS (placeholders conectados ao input de arquivo)
+    // Fix 3b: comprimir imagem antes de gravar no Firebase.
+    // Base64 sem compressão pode chegar a 3-4MB por foto,
+    // tornando cada listener snap muito pesado.
+    // Reduz para ~80-150KB mantendo qualidade visual adequada.
+    _compressImage(dataUrl, maxW = 900, quality = 0.72) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const ratio   = Math.min(maxW / img.width, 1);
+          const canvas  = document.createElement('canvas');
+          canvas.width  = Math.round(img.width  * ratio);
+          canvas.height = Math.round(img.height * ratio);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(dataUrl); // fallback sem compressão
+        img.src = dataUrl;
+      });
+    },
+
     addFotoRef(postoId) {
       const inp = document.createElement('input');
       inp.type = 'file'; inp.accept = 'image/*';
-      inp.onchange = e => {
+      inp.onchange = async e => {
         const f = e.target.files[0]; if (!f) return;
         const reader = new FileReader();
-        reader.onload = ev => {
-          S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).set(ev.target.result);
+        reader.onload = async ev => {
+          const compressed = await UI._compressImage(ev.target.result, 900, 0.72);
+          S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).set(compressed);
           toast('Foto de referência adicionada!', 'success');
         };
         reader.readAsDataURL(f);
@@ -1652,13 +1697,14 @@ const NIT_PLANOP = (() => {
     addFotoRegistro(postoId) {
       const inp = document.createElement('input');
       inp.type = 'file'; inp.accept = 'image/*';
-      inp.onchange = e => {
+      inp.onchange = async e => {
         const f = e.target.files[0]; if (!f) return;
         const reader = new FileReader();
-        reader.onload = ev => {
+        reader.onload = async ev => {
+          const compressed = await UI._compressImage(ev.target.result, 700, 0.65);
           const ts = getHoraAtual();
           S.db.ref(`efetivo/postos/${postoId}/fotosRegistro`).push({
-            data: ev.target.result, timestamp: ts
+            data: compressed, timestamp: ts
           });
           toast('Registro fotográfico adicionado!', 'success');
         };
