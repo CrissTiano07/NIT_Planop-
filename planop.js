@@ -253,7 +253,10 @@ const NIT_PLANOP = (() => {
 
     login() {
       const prov = new firebase.auth.GoogleAuthProvider();
-      firebase.auth().signInWithPopup(prov).catch(e => {
+      // signInWithRedirect evita o erro COOP que bloqueia window.closed
+      // na abordagem de popup. O usuário é redirecionado para o Google
+      // e retorna ao app após autenticação — sem janela popup.
+      firebase.auth().signInWithRedirect(prov).catch(e => {
         console.error('[Auth.login]', e);
         toast('Erro ao entrar. Tente novamente.', 'danger');
       });
