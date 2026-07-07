@@ -586,7 +586,7 @@ const NIT_PLANOP = (() => {
         });
       };
       tick();
-      UI._clockTick = setInterval(tick, 5000);
+      UI._clockTick = setInterval(tick, 1000);
     },
 
     popularSelectTipos() {
@@ -881,6 +881,9 @@ const NIT_PLANOP = (() => {
 
     selOp(opId) {
       S.operacaoSel = opId;
+      // Limpar filtro de QRUs ao trocar de operação
+      const qruSearch = document.querySelector('.qru-search');
+      if (qruSearch) qruSearch.value = '';
       UI.renderOpsList();
       UI.renderMainContent();
     },
@@ -963,8 +966,9 @@ const NIT_PLANOP = (() => {
               <button class="modo-btn modo-btn-active">
                 ▶ EXECUTAR
               </button>
-              <button class="modo-btn"
-                onclick="NIT_PLANOP.UI.abrirPlanejar()">
+              <button class="modo-btn modo-btn-disabled"
+                title="Em desenvolvimento — disponível na próxima versão"
+                aria-disabled="true">
                 📅 PLANEJAR
               </button>
             </div>
@@ -1333,6 +1337,7 @@ const NIT_PLANOP = (() => {
           ${canDrag ? `ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"` : ''}
           ${canDrag ? `ondragend="NIT_PLANOP.UI.dragEndStaff(event)"` : ''}
           ${canWrite() && canClick ? `onclick="NIT_PLANOP.UI.abrirStatusPessoa(event,'${rId}')"` : ''}>
+          ${canDrag ? `<span class="staff-drag-handle" aria-hidden="true" onclick="event.stopPropagation()">⠿</span>` : '<span class="staff-drag-placeholder"></span>'}
           <div class="staff-avatar" style="background:${avatarColor(r.nome)}" aria-hidden="true">
             ${avatarInitials(r.nome)}
           </div>
@@ -2026,7 +2031,6 @@ const NIT_PLANOP = (() => {
 
     async criarOperacao() {
       const bairro = $('nop-bairro')?.value?.trim();
-      // Tipo lido do hidden input (preenchido pelo combo)
       const tipo   = $('nop-tipo')?.value;
       const hor    = $('nop-horario')?.value;
       const nome   = $('nop-nome')?.value?.trim() ||
@@ -2035,6 +2039,9 @@ const NIT_PLANOP = (() => {
       if (!bairro) { toast('Bairro é obrigatório','warning'); return; }
       if (!tipo)   { toast('Selecione o tipo de missão','warning'); return; }
       if (!S.escalaAtiva) { toast('Abra um turno primeiro','warning'); return; }
+
+      const btn = document.querySelector('.nova-op-footer .btn-accent-sm');
+      if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
 
       await DB.adicionarOperacao({
         nome: upper(nome), bairro: upper(bairro),
@@ -2087,8 +2094,26 @@ const NIT_PLANOP = (() => {
       toast(`${r.nome||recursoId} adicionado à supervisão`, 'success');
     },
 
-    async encerrarTurno() {
-      if (!confirm('Encerrar o turno?\n\nOs recursos escalados voltarão para DISPONÍVEL.')) return;
+        async encerrarTurno() {
+      if (!S.escalaAtiva) return;
+      const wrap = $('btn-encerrar-wrap');
+      if (!wrap) return;
+      if (wrap.querySelector('.encerrar-confirm')) {
+        wrap.querySelector('.encerrar-confirm').remove(); return;
+      }
+      const div = document.createElement('div');
+      div.className = 'encerrar-confirm';
+      div.innerHTML = `
+        <p class="encerrar-confirm-msg">Encerrar turno? Orientadores serão liberados.</p>
+        <div class="encerrar-confirm-btns">
+          <button class="btn-ghost-sm" onclick="this.closest('.encerrar-confirm').remove()">Não</button>
+          <button class="btn-encerrar-ok" onclick="NIT_PLANOP.Actions._doEncerrar()">Sim, encerrar</button>
+        </div>`;
+      wrap.appendChild(div);
+    },
+
+    async _doEncerrar() {
+      document.querySelector('.encerrar-confirm')?.remove();
       vibrar([60,40,60]);
       await DB.encerrarEscala(S.escalaAtiva, '');
       S.operacaoSel = null;
@@ -2138,12 +2163,22 @@ const NIT_PLANOP = (() => {
       const op = S.operacoes[opId];
       if (!op) return;
       const nPostos = Object.values(S.postos).filter(p => p.operacaoId === opId).length;
-      const msg = nPostos > 0
-        ? `Deletar "${titleCase(op.nome)}"?\n\n${nPostos} posto(s) serão removidos junto e os orientadores liberados.`
+      const label   = nPostos > 0
+        ? `Deletar "${titleCase(op.nome)}" e ${nPostos} posto(s)?`
         : `Deletar "${titleCase(op.nome)}"?`;
-      if (!confirm(msg)) return;
+      const opEl = document.querySelector(`#ops-lista .ops-item[onclick*="'${opId}'"]`);
+      if (opEl?.querySelector('.inline-confirm')) { opEl.querySelector('.inline-confirm').remove(); return; }
+      const ic = document.createElement('div');
+      ic.className = 'inline-confirm';
+      ic.innerHTML = `<span>${esc(label)}</span>
+        <button class="btn-ghost-sm" onclick="this.closest('.inline-confirm').remove()">Não</button>
+        <button class="btn-danger-sm" onclick="NIT_PLANOP.Actions._doDeletarOp('${opId}')">Sim</button>`;
+      opEl?.appendChild(ic);
+    },
+
+    async _doDeletarOp(opId) {
+      document.querySelector('.inline-confirm')?.remove();
       vibrar([60,40,60]);
-      // Remover postos e liberar orientadores
       const postosOp = Object.entries(S.postos).filter(([,p]) => p.operacaoId === opId);
       for (const [pid, posto] of postosOp) {
         for (const rId of Object.keys(posto.orientadores||{})) {
@@ -2162,8 +2197,21 @@ const NIT_PLANOP = (() => {
       UI._fecharTodosMenus();
       const posto = S.postos[postoId];
       if (!posto) return;
-      if (!confirm(`Remover o posto Nº ${posto.numero}?\n\nOs orientadores designados serão liberados.`)) return;
+      const card = document.getElementById(`qru-${postoId}`);
+      if (card?.querySelector('.inline-confirm')) { card.querySelector('.inline-confirm').remove(); return; }
+      const ic = document.createElement('div');
+      ic.className = 'inline-confirm inline-confirm-danger';
+      ic.innerHTML = `<span>Remover posto Nº ${posto.numero}?</span>
+        <button class="btn-ghost-sm" onclick="this.closest('.inline-confirm').remove()">Não</button>
+        <button class="btn-danger-sm" onclick="NIT_PLANOP.Actions._doDeletarPosto('${postoId}')">Sim</button>`;
+      card?.querySelector('.qru-card-header')?.appendChild(ic);
+    },
+
+    async _doDeletarPosto(postoId) {
+      document.querySelector('.inline-confirm')?.remove();
       vibrar(60);
+      const posto = S.postos[postoId];
+      if (!posto) return;
       for (const rId of Object.keys(posto.orientadores||{})) {
         const emOutro = Object.entries(S.postos)
           .some(([id2,p2]) => id2!==postoId && p2.orientadores?.[rId]);
