@@ -1335,3 +1335,65 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   .main-panel { height: calc(100vh - 56px); }
   .metricas-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* Confirmação inline — substitui confirm() nativo */
+.encerrar-confirm {
+  padding: var(--space-3) var(--space-4);
+  background: var(--danger-dim);
+  border-top: 1px solid var(--danger);
+  animation: slideDown var(--dur-normal) var(--ease-out);
+}
+.encerrar-confirm-msg {
+  font-size: 11px; color: var(--danger); margin-bottom: var(--space-2);
+  line-height: 1.4;
+}
+.encerrar-confirm-btns {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
+}
+.btn-encerrar-ok {
+  height: 28px; padding: 0 var(--space-3);
+  background: var(--danger); border: none;
+  border-radius: var(--radius); color: #fff;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  transition: opacity var(--dur-fast);
+}
+.btn-encerrar-ok:hover { opacity: .85; }
+
+/* Inline confirm nos cards de QRU e ops */
+.inline-confirm {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-card); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); margin-top: var(--space-2);
+  font-size: 11px; color: var(--text-secondary);
+  animation: fadeIn var(--dur-fast);
+  flex-wrap: wrap;
+}
+.inline-confirm span { flex: 1; }
+.btn-danger-sm {
+  height: 26px; padding: 0 var(--space-3);
+  background: var(--danger); border: none;
+  border-radius: var(--radius); color: #fff;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  transition: opacity var(--dur-fast);
+}
+.btn-danger-sm:hover { opacity: .85; }
+
+/* Planejar desabilitado */
+.modo-btn-disabled {
+  opacity: 0.4; cursor: not-allowed;
+}
+.modo-btn-disabled:hover {
+  border-color: var(--border-strong) !important;
+  color: var(--text-muted) !important;
+  background: none !important;
+}
+
+/* Drag handle de volta */
+.staff-drag-handle {
+  color: var(--text-muted); font-size: 13px;
+  cursor: grab; flex-shrink: 0; letter-spacing: -2px;
+  opacity: 0.4; transition: opacity var(--dur-fast);
+}
+.staff-row:hover .staff-drag-handle { opacity: 0.9; }
+.staff-drag-placeholder { width: 13px; flex-shrink: 0; }
