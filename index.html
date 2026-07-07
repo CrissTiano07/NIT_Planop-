@@ -133,14 +133,14 @@
     <!-- Supervisão do turno -->
     <div class="sidebar-section" id="supervisao-section">
       <button class="sidebar-section-toggle" id="supervisao-toggle"
-        onclick="NIT_PLANOP.UI.toggleSupervisao()" aria-expanded="false">
+        onclick="NIT_PLANOP.UI.toggleSupervisao()" aria-expanded="true">
         <span class="section-label">SUPERVISÃO DO TURNO</span>
         <span id="supervisao-count" class="section-count">—</span>
         <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
-      <div id="supervisao-body" class="section-body hidden">
+      <div id="supervisao-body" class="section-body">
         <div id="supervisao-lista" class="supervisao-lista"></div>
         <button class="btn-add-membro" onclick="NIT_PLANOP.UI.abrirAddMembro()">
           + Adicionar membro
