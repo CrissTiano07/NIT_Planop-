@@ -578,6 +578,8 @@ const NIT_PLANOP = (() => {
     // Relógio em tempo real
     _clockTick: null,
     _initClock() {
+      // Guard: não criar múltiplos intervals se init for chamado de novo
+      if (UI._clockTick) clearInterval(UI._clockTick);
       const tick = () => {
         const h = getHoraAtual();
         ['shift-clock','topbar-clock'].forEach(id => {
@@ -605,9 +607,16 @@ const NIT_PLANOP = (() => {
     // Substitui todos os <select> do sistema por um input pesquisável
     // com navegação por teclado: ↑↓ navegar · Enter selecionar · Esc fechar
     _combo(inputId, listId, items, onSelect) {
-      const inp  = $(inputId);
+      let inp  = $(inputId);
       const list = $(listId);
       if (!inp || !list) return;
+
+      // Previne listeners duplicados: clona o input (a clonagem descarta
+      // todos os listeners antigos) e substitui no DOM antes de re-inicializar.
+      // Sem isso, cada re-init (ex: abrir/fechar o form) acumula listeners.
+      const clone = inp.cloneNode(true);
+      inp.parentNode.replaceChild(clone, inp);
+      inp = clone;
 
       let focusIdx = -1;
 
@@ -1781,9 +1790,6 @@ const NIT_PLANOP = (() => {
       setTimeout(() => $('membro-nome-input')?.focus(), 60);
     },
 
-    abrirPlanejar() {
-      toast('Modo Planejar chegará na próxima entrega.', 'info');
-    },
 
     // ── MODO CAMPO UI
     initCampoUI() {
@@ -2094,7 +2100,7 @@ const NIT_PLANOP = (() => {
       toast(`${r.nome||recursoId} adicionado à supervisão`, 'success');
     },
 
-        async encerrarTurno() {
+    async encerrarTurno() {
       if (!S.escalaAtiva) return;
       const wrap = $('btn-encerrar-wrap');
       if (!wrap) return;
