@@ -1413,7 +1413,16 @@ const NIT_PLANOP = (() => {
       if (!menu) return;
       const estaAberto = !menu.classList.contains('hidden');
       UI._fecharTodosMenus();
-      if (!estaAberto) menu.classList.remove('hidden');
+      if (!estaAberto) {
+        menu.classList.remove('hidden');
+        // Position fixed — escapa do overflow-y:auto da lista
+        const btn = event.currentTarget;
+        const r   = btn.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top      = `${r.bottom + 4}px`;
+        menu.style.left     = `${Math.max(8, r.right - 160)}px`;
+        menu.style.right    = 'auto';
+      }
     },
 
     togglePostoMenu(postoId, event) {
@@ -1422,7 +1431,15 @@ const NIT_PLANOP = (() => {
       if (!menu) return;
       const estaAberto = !menu.classList.contains('hidden');
       UI._fecharTodosMenus();
-      if (!estaAberto) menu.classList.remove('hidden');
+      if (!estaAberto) {
+        menu.classList.remove('hidden');
+        const btn = event.currentTarget;
+        const r   = btn.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top      = `${r.bottom + 4}px`;
+        menu.style.left     = `${Math.max(8, r.right - 160)}px`;
+        menu.style.right    = 'auto';
+      }
     },
 
     // ── EDITAR OPERAÇÃO — form inline na sidebar ───────────────
@@ -1640,7 +1657,7 @@ const NIT_PLANOP = (() => {
       el.style.position = 'fixed';
       el.style.top      = `${r2.top}px`;
       el.style.right    = `${window.innerWidth - r2.left + 8}px`;
-      el.style.zIndex   = 'var(--z-dropdown)';
+      el.style.zIndex   = '200';
     },
 
     mostrarMotivos(rId) {
