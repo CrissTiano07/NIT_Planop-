@@ -679,9 +679,14 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .qrus-lista { display: flex; flex-direction: column; gap: var(--space-3); }
 .qru-card {
   background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); overflow: hidden;
+  border-radius: var(--radius-lg);
+  /* overflow visible — o menu ··· (position absolute) precisa escapar do card */
+  overflow: visible;
   border-left-width: 3px;
+  position: relative;
 }
+.qru-card-header { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.qru-card:not(.expanded) .qru-card-header { border-radius: var(--radius-lg); }
 .qru-card.status-vazio    { border-left-color: var(--danger); }
 .qru-card.status-parcial  { border-left-color: var(--warning); }
 .qru-card.status-completo { border-left-color: var(--success); }
@@ -1397,3 +1402,16 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .staff-row:hover .staff-drag-handle { opacity: 0.9; }
 .staff-drag-placeholder { width: 13px; flex-shrink: 0; }
+
+/* Classes que estavam sem estilo (varredura de qualidade) */
+.campo-search-wrap {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.campo-qth-destaque {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-2);
+}
