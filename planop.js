@@ -866,13 +866,13 @@ const NIT_PLANOP = (() => {
         const dot      = opDot(id);
         const icon     = opIcon(op.tipoMissao);
         const nPostos  = Object.values(S.postos).filter(p => p.operacaoId === id).length;
-        const sub      = [op.bairro, nPostos + (nPostos === 1 ? ' posto' : ' postos'), op.horario ? op.horario + 'h' : '']
+        const sub      = [titleCase(op.bairro||''), nPostos + (nPostos === 1 ? ' posto' : ' postos')]
           .filter(Boolean).join(' · ');
         return `<div class="ops-item ${ativo}" onclick="NIT_PLANOP.UI.selOp('${id}')">
           <div class="ops-item-icon">${icon}</div>
           <div class="ops-item-body">
             <div class="ops-item-name">${esc(titleCase(op.nome||'—'))}</div>
-            <div class="ops-item-sub">${esc([titleCase(op.bairro||''), nPostos+' posto'+(nPostos!==1?'s':''), op.horario?op.horario+'h':''].filter(Boolean).join(' · '))}</div>
+            <div class="ops-item-sub">${esc([titleCase(op.bairro||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))}</div>
           </div>
           <span class="ops-status-dot ${dot}"></span>
           ${canWrite() ? `
@@ -1066,7 +1066,10 @@ const NIT_PLANOP = (() => {
             <div id="drop-${postoId}" class="orientador-drop"></div>
            </div>` : '';
 
-      return `<div class="qru-card status-${status}" id="qru-${postoId}"
+      // Fix 4: card começa expandido se já tem orientadores designados —
+      // o supervisor precisa ver quem está no posto sem ter que clicar
+      const expanded = orientadores.length > 0 ? 'expanded' : '';
+      return `<div class="qru-card status-${status} ${expanded}" id="qru-${postoId}"
         ondragover="NIT_PLANOP.UI.dragOverQru(event,'${postoId}')"
         ondragleave="NIT_PLANOP.UI.dragLeaveQru(event,'${postoId}')"
         ondrop="NIT_PLANOP.UI.dropOnQru(event,'${postoId}')">
@@ -1306,10 +1309,25 @@ const NIT_PLANOP = (() => {
         .filter(([,r]) => r.status !== 'desligado')
         .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'));
 
-      const disponiveis    = todos.filter(([,r]) => r.status === 'disponivel');
-      const escalados      = todos.filter(([,r]) => r.status === 'escalado');
-      const indisponiveis  = todos.filter(([,r]) => r.status === 'indisponivel');
-      const ausentes       = todos.filter(([,r]) => r.status === 'ausente');
+      // Índice invertido — fonte de verdade para quem está em posto.
+      // Tem precedência sobre r.status, que pode estar momentaneamente
+      // desatualizado após um write otimista.
+      const postoByRecurso = {};
+      Object.values(S.postos).forEach(p => {
+        Object.keys(p.orientadores||{}).forEach(rId => {
+          postoByRecurso[rId] = p;
+        });
+      });
+
+      // Fix 1: se aparece em postoByRecurso → escalado (independente do status Firebase)
+      const disponiveis   = todos.filter(([rId, r]) =>
+        !postoByRecurso[rId] && r.status === 'disponivel');
+      const escalados     = todos.filter(([rId, r]) =>
+        !!postoByRecurso[rId] || r.status === 'escalado');
+      const indisponiveis = todos.filter(([rId, r]) =>
+        !postoByRecurso[rId] &&
+        (r.status === 'indisponivel' || r.status === 'ausente'));
+      const ausentes      = []; // fundido em indisponiveis acima
 
       if (count) count.textContent = disponiveis.length;
 
@@ -1317,19 +1335,8 @@ const NIT_PLANOP = (() => {
         ? arr.filter(([,r]) => (r.nome||'').toLowerCase().includes(busca))
         : arr;
 
-      const motivoLabel = r => {
-        if (r.status !== 'indisponivel') return '';
-        const m = CFG.MOTIVOS.find(m => m.value === r.motivoIndisponivel);
-        return m ? m.label : 'Indisponível';
-      };
+      // Fix 4: índice já montado acima — remover motivoLabel legada
 
-      // Fix 4: índice invertido — O(n) uma vez, não O(n²) por row
-      const postoByRecurso = {};
-      Object.values(S.postos).forEach(p => {
-        Object.keys(p.orientadores||{}).forEach(rId => {
-          postoByRecurso[rId] = p;
-        });
-      });
 
       const rowHTML = ([rId, r], opts = {}) => {
         const { canDrag = true, canClick = true } = opts;
