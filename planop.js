@@ -341,11 +341,10 @@ const NIT_PLANOP = (() => {
       const ref = S.db.ref('efetivo/operacoes')
         .orderByChild('escalaId').equalTo(S.escalaAtiva);
       const fn  = ref.on('value', snap => {
-        const novas = snap.val() || {};
-        Object.assign(S.operacoes, novas);
+        // Reconstrói do snap — deleções no Firebase refletem no estado local.
+        // (Object.assign aditivo mantinha itens deletados para sempre.)
+        S.operacoes = snap.val() || {};
         UI.renderOpsList();
-        // Fix 2: se há update otimista em andamento, não re-renderiza
-        // o conteúdo principal (preserva dropdown aberto)
         if (!S._suppressRender) UI.renderMainContent();
       });
       S._escalaUnsubs.push(() => ref.off('value', fn));
@@ -357,15 +356,26 @@ const NIT_PLANOP = (() => {
         .orderByChild('escalaId').equalTo(S.escalaAtiva);
       const fn  = ref.on('value', snap => {
         const novos = snap.val() || {};
-        // Fix 3a: excluir fotos do merge — elas ficam em caminhos separados
-        // e são carregadas sob demanda ao expandir detalhes do posto
+        // Reconstrói do snap (deleções refletem), preservando apenas
+        // as fotos já carregadas em memória para não re-baixar base64.
+        const fotosCache = {};
+        Object.entries(S.postos).forEach(([id, p]) => {
+          if (p.fotoReferencia || p.fotosRegistro) {
+            fotosCache[id] = {
+              fotoReferencia: p.fotoReferencia,
+              fotosRegistro:  p.fotosRegistro
+            };
+          }
+        });
+        S.postos = {};
         Object.entries(novos).forEach(([id, p]) => {
-          const { fotoReferencia, fotosRegistro, ...resto } = p;
-          if (!S.postos[id]) S.postos[id] = {};
-          Object.assign(S.postos[id], resto);
-          // Preservar fotos já carregadas — não sobrescrever com undefined
-          if (fotoReferencia !== undefined) S.postos[id].fotoReferencia = fotoReferencia;
-          if (fotosRegistro  !== undefined) S.postos[id].fotosRegistro  = fotosRegistro;
+          S.postos[id] = { ...p };
+          if (fotosCache[id]) {
+            if (!S.postos[id].fotoReferencia && fotosCache[id].fotoReferencia)
+              S.postos[id].fotoReferencia = fotosCache[id].fotoReferencia;
+            if (!S.postos[id].fotosRegistro && fotosCache[id].fotosRegistro)
+              S.postos[id].fotosRegistro = fotosCache[id].fotosRegistro;
+          }
         });
         UI.renderOpsList();
         if (!S._suppressRender) {
@@ -1653,9 +1663,12 @@ const NIT_PLANOP = (() => {
       const el = pop.firstElementChild;
       document.body.appendChild(el);
 
-      // Posicionar à esquerda do botão
+      // Posicionar à esquerda da row, com clamp vertical —
+      // popover nunca sai da tela (altura estimada c/ motivos: 280px)
+      const POPOVER_H = 280;
+      const top = Math.min(r2.top, window.innerHeight - POPOVER_H - 12);
       el.style.position = 'fixed';
-      el.style.top      = `${r2.top}px`;
+      el.style.top      = `${Math.max(12, top)}px`;
       el.style.right    = `${window.innerWidth - r2.left + 8}px`;
       el.style.zIndex   = '200';
     },
@@ -2214,12 +2227,20 @@ const NIT_PLANOP = (() => {
         for (const rId of Object.keys(posto.orientadores||{})) {
           const emOutro = Object.entries(S.postos)
             .some(([id2,p2]) => id2!==pid && p2.orientadores?.[rId]);
-          if (!emOutro) await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
+          if (!emOutro) {
+            await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
+            if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
+          }
         }
         await S.db.ref(`efetivo/postos/${pid}`).remove();
+        delete S.postos[pid];  // update otimista
       }
       await S.db.ref(`efetivo/operacoes/${opId}`).remove();
+      delete S.operacoes[opId];  // update otimista
       if (S.operacaoSel === opId) S.operacaoSel = null;
+      UI.renderOpsList();
+      UI.renderMainContent();
+      UI.renderRightPanel();
       toast('Operação deletada', 'info');
     },
 
@@ -2245,9 +2266,16 @@ const NIT_PLANOP = (() => {
       for (const rId of Object.keys(posto.orientadores||{})) {
         const emOutro = Object.entries(S.postos)
           .some(([id2,p2]) => id2!==postoId && p2.orientadores?.[rId]);
-        if (!emOutro) await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
+        if (!emOutro) {
+          await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
+          if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
+        }
       }
       await S.db.ref(`efetivo/postos/${postoId}`).remove();
+      delete S.postos[postoId];  // update otimista
+      UI.renderOpsList();
+      UI.renderMainContent();
+      UI.renderRightPanel();
       toast('Posto removido', 'info');
     },
 
