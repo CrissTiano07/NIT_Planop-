@@ -792,7 +792,7 @@ const NIT_PLANOP = (() => {
       const bairro = $('nop-bairro')?.value?.trim() || '';
       const nome   = $('nop-nome');
       if (!nome || nome._editado) return;
-      nome.value = tipo && bairro ? `${tipo} — ${bairro}` : tipo || bairro || '';
+      nome.value = tipo && bairro ? `${bairro} — ${tipo}` : bairro || tipo || '';
     },
 
     // ── SHIFT BAR
@@ -876,13 +876,13 @@ const NIT_PLANOP = (() => {
         const dot      = opDot(id);
         const icon     = opIcon(op.tipoMissao);
         const nPostos  = Object.values(S.postos).filter(p => p.operacaoId === id).length;
-        const sub      = [titleCase(op.bairro||''), nPostos + (nPostos === 1 ? ' posto' : ' postos')]
+        const sub      = [titleCase(op.bairro||''), titleCase(op.tipoMissao||''), nPostos + (nPostos === 1 ? ' posto' : ' postos')]
           .filter(Boolean).join(' · ');
         return `<div class="ops-item ${ativo}" onclick="NIT_PLANOP.UI.selOp('${id}')">
           <div class="ops-item-icon">${icon}</div>
           <div class="ops-item-body">
             <div class="ops-item-name">${esc(titleCase(op.nome||'—'))}</div>
-            <div class="ops-item-sub">${esc([titleCase(op.bairro||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))}</div>
+            <div class="ops-item-sub">${esc([titleCase(op.bairro||''), titleCase(op.tipoMissao||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))}</div>
           </div>
           <span class="ops-status-dot ${dot}"></span>
           ${canWrite() ? `
@@ -2077,7 +2077,7 @@ const NIT_PLANOP = (() => {
       const tipo   = $('nop-tipo')?.value;
       const hor    = $('nop-horario')?.value;
       const nome   = $('nop-nome')?.value?.trim() ||
-        (tipo && bairro ? `${tipo} — ${bairro}` : tipo||bairro||'OPERAÇÃO');
+        (tipo && bairro ? `${bairro} — ${tipo}` : bairro||tipo||'OPERAÇÃO');
 
       if (!bairro) { toast('Bairro é obrigatório','warning'); return; }
       if (!tipo)   { toast('Selecione o tipo de missão','warning'); return; }
