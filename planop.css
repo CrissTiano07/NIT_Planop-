@@ -132,7 +132,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   color: var(--text-primary);
 }
 .login-brand-sub {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.12em;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
   color: var(--text-muted); text-transform: uppercase;
 }
 .login-desc {
@@ -200,7 +200,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   color: var(--text-primary); line-height: 1;
 }
 .sidebar-brand-sub {
-  font-size: 8px; font-weight: 600; letter-spacing: 0.1em;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
   color: var(--text-muted); text-transform: uppercase; line-height: 1;
 }
 .btn-icon-nav {
@@ -267,7 +267,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .sidebar-section-toggle:hover { color: var(--text-secondary); }
 .section-label {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; flex: 1;
 }
 .section-count {
@@ -304,7 +304,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   flex: 1; font-size: 12px; color: var(--text-primary); font-weight: 500;
 }
 .supervisao-cargo {
-  font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
   color: var(--text-muted); background: var(--surface-hover);
   padding: 1px 5px; border-radius: 3px;
 }
@@ -321,7 +321,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .btn-add-membro:hover { opacity: 0.8; }
 .supervisao-cargo-badge {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
   padding: 2px 7px; border-radius: 4px;
   background: var(--bg-card); border: 1px solid var(--border-strong);
   color: var(--text-tertiary); text-transform: uppercase;
@@ -368,12 +368,12 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   animation: slideDown var(--dur-normal) var(--ease-out);
 }
 .form-label {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text-muted);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-tertiary);
   display: block; margin-bottom: 3px;
 }
 .form-hint {
-  font-size: 9px; font-weight: 400; color: var(--text-muted);
+  font-size: 10px; font-weight: 400; color: var(--text-muted);
   text-transform: none; letter-spacing: 0; margin-left: 4px;
 }
 .input-sm {
@@ -460,7 +460,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .sidebar-busca-clear:hover { color: var(--text-primary); }
 
 .section-label-row {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--text-muted);
   padding: var(--space-2) var(--space-4) var(--space-1);
   flex-shrink: 0;
@@ -529,7 +529,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .user-role-badge {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
   color: var(--text-tertiary); text-transform: uppercase;
 }
 
@@ -573,7 +573,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   flex-wrap: wrap;
 }
 .op-topbar-sub {
-  font-size: 11px; color: var(--text-muted); margin-top: 3px;
+  font-size: 12px; color: var(--text-tertiary); margin-top: 3px;
 }
 .op-topbar-right {
   display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0;
@@ -627,7 +627,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   border-radius: var(--radius-lg); padding: var(--space-4);
 }
 .metrica-label {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--text-muted);
   margin-bottom: var(--space-2);
 }
@@ -647,7 +647,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   margin-bottom: var(--space-3);
 }
 .qru-section-label {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--text-muted);
 }
 .qru-search {
@@ -676,7 +676,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .btn-add-posto:hover { opacity: .85; }
 
 /* QRU cards */
-.qrus-lista { display: flex; flex-direction: column; gap: var(--space-3); }
+.qrus-lista { display: flex; flex-direction: column; gap: var(--space-4); }
 .qru-card {
   background: var(--bg-surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -706,11 +706,12 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .qru-addr-wrap { flex: 1; min-width: 0; }
 .qru-addr {
-  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
+  letter-spacing: -0.01em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .qru-sub {
-  font-size: 10px; color: var(--text-muted); margin-top: 1px;
+  font-size: 11px; color: var(--text-tertiary); margin-top: 2px;
 }
 .qru-badge {
   font-size: 11px; font-weight: 600; padding: 3px 10px;
@@ -752,7 +753,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .qru-card.expanded .qru-body { display: block; }
 
 .orientadores-label {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--text-muted);
   margin-bottom: var(--space-2);
 }
@@ -771,7 +772,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .chip-avatar {
   width: 22px; height: 22px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 8px; font-weight: 700; flex-shrink: 0;
+  font-size: 10px; font-weight: 700; flex-shrink: 0;
   color: #0d1826; font-family: var(--font-ui);
   font-feature-settings: normal;
 }
@@ -785,7 +786,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .chip-cargo {
   /* Inter 600, UPPERCASE, text-muted, leve tracking */
   font-size: 10px; font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -854,7 +855,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .drop-avail-dot.off { background: var(--text-muted); }
 .drop-item-nome { flex: 1; font-weight: 500; }
 .drop-item-cargo {
-  font-size: 9px; color: var(--text-muted); font-weight: 600;
+  font-size: 10px; color: var(--text-tertiary); font-weight: 600;
   letter-spacing: 0.04em;
 }
 
@@ -894,7 +895,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 /* Fotos */
 .fotos-section { margin-top: var(--space-4); }
 .fotos-label {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--text-muted);
   margin-bottom: var(--space-3);
 }
@@ -916,7 +917,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .foto-placeholder:hover { border-color: var(--accent); color: var(--accent); }
 .foto-placeholder svg { opacity: 0.5; }
 .foto-label-sub {
-  font-size: 9px; color: var(--text-muted);
+  font-size: 10px; color: var(--text-tertiary);
   text-align: center; margin-top: 4px;
 }
 .fotos-registros { display: flex; gap: var(--space-2); flex-wrap: wrap; }
@@ -927,8 +928,8 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .foto-ts {
   position: absolute; bottom: 2px; left: 2px;
-  font-size: 8px; color: #fff; background: rgba(0,0,0,.6);
-  padding: 1px 3px; border-radius: 2px;
+  font-size: 10px; color: #fff; background: rgba(0,0,0,.7);
+  padding: 2px 5px; border-radius: 3px;
   font-family: var(--font-mono);
 }
 .btn-add-registro {
@@ -1039,7 +1040,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .staff-sub-line {
-  font-size: 11px; color: var(--text-muted); margin-top: 2px;
+  font-size: 11px; color: var(--text-tertiary); margin-top: 2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .staff-sub-line.has-motivo { color: var(--warning); font-style: italic; }
@@ -1162,7 +1163,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .campo-main { padding: var(--space-4); max-width: 600px; margin: 0 auto; }
 .campo-search-label {
-  display: block; font-size: 9px; font-weight: 700;
+  display: block; font-size: 10px; font-weight: 700;
   letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--text-muted); margin-bottom: var(--space-2);
 }
@@ -1205,7 +1206,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   background: rgba(88,166,255,0.03);
 }
 .campo-zona-onde-label {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.14em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
   color: var(--text-muted); text-transform: uppercase;
   margin-bottom: var(--space-2);
 }
@@ -1301,7 +1302,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .combo-item-focused::before {
   content: '▶';
   margin-right: 6px;
-  font-size: 8px;
+  font-size: 9px;
   color: var(--accent);
 }
 
@@ -1325,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 
 /* Badge de aviso no label do orientador */
 .badge-warn-sm {
-  font-size: 9px; font-weight: 700; padding: 1px 6px;
+  font-size: 10px; font-weight: 700; padding: 1px 6px;
   border-radius: 20px; background: var(--warning-dim);
   color: var(--warning); margin-left: 4px;
 }
@@ -1414,4 +1415,24 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   border-radius: var(--radius-lg);
   padding: var(--space-3) var(--space-4);
   margin-top: var(--space-2);
+}
+
+
+/* ── LEGIBILIDADE PARA OPERADOR INICIANTE ─────────────────────────
+   Foco visível: iniciantes navegam por Tab e precisam ver onde estão */
+button:focus-visible, input:focus-visible, [onclick]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+input:focus {
+  border-color: var(--accent);
+}
+
+/* Números sempre tabulares em contexto de dados */
+.metrica-num { font-feature-settings: "tnum"; }
+
+/* Linha de leitura mais confortável em textos de apoio */
+.qru-sub, .staff-sub-line, .ops-item-sub, .op-topbar-sub {
+  line-height: 1.45;
 }
