@@ -799,15 +799,12 @@ const NIT_PLANOP = (() => {
     renderShiftBar() {
       if (!S.escalaAtiva) {
         show('shift-idle'); hide('shift-active');
-        hide('btn-encerrar-wrap');
         return;
       }
       const e = S.escalas[S.escalaAtiva];
       hide('shift-idle'); show('shift-active');
       const lbl = $('shift-label-text');
       if (lbl) lbl.textContent = `${turnoLabel(e)} · ${e.horarioInicio}–${e.horarioFim}`;
-      if (canManage()) show('btn-encerrar-wrap');
-      else hide('btn-encerrar-wrap');
     },
 
     // ── SUPERVISÃO
@@ -976,8 +973,7 @@ const NIT_PLANOP = (() => {
               <span class="badge-ativo">ATIVO</span>
             </div>
             <div class="op-topbar-sub">
-              ${[titleCase(op.bairro||''), op.horario?op.horario+'h':'', titleCase(op.tipoMissao||'')]
-                .filter(Boolean).map(esc).join(' · ')}
+              ${op.horario ? `Início ${op.horario}h` : titleCase(op.bairro||'')}
             </div>
           </div>
           <div class="op-topbar-right">
@@ -1411,7 +1407,34 @@ const NIT_PLANOP = (() => {
              </div>` : ''}`;
     },
 
-    // ── MENUS DE CONTEXTO ─────────────────────────────────────
+    toggleSettings(event) {
+      event.stopPropagation();
+      const menu = $('settings-menu');
+      if (!menu) return;
+      if (!menu.classList.contains('hidden')) {
+        menu.classList.add('hidden'); menu.innerHTML = ''; return;
+      }
+      const turnoAtivo = !!S.escalaAtiva;
+      menu.innerHTML = `
+        ${turnoAtivo && canManage() ? `
+        <div class="settings-section-label">Turno</div>
+        <button class="settings-item settings-item-danger"
+          onclick="NIT_PLANOP.Actions.encerrarTurno()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          Encerrar turno
+        </button>` : ''}
+        <div class="settings-section-label">Conta</div>
+        <button class="settings-item" onclick="NIT_PLANOP.Auth.logout()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          Sair
+        </button>
+      `;
+      menu.classList.remove('hidden');
+    },
     _fecharTodosMenus() {
       document.querySelectorAll('.ops-ctx-menu')
         .forEach(m => m.classList.add('hidden'));
@@ -2139,10 +2162,10 @@ const NIT_PLANOP = (() => {
 
     async encerrarTurno() {
       if (!S.escalaAtiva) return;
-      const wrap = $('btn-encerrar-wrap');
-      if (!wrap) return;
-      if (wrap.querySelector('.encerrar-confirm')) {
-        wrap.querySelector('.encerrar-confirm').remove(); return;
+      // Confirm inline no settings menu
+      const menu = $('settings-menu');
+      if (menu?.querySelector('.encerrar-confirm')) {
+        menu.querySelector('.encerrar-confirm').remove(); return;
       }
       const div = document.createElement('div');
       div.className = 'encerrar-confirm';
@@ -2152,7 +2175,7 @@ const NIT_PLANOP = (() => {
           <button class="btn-ghost-sm" onclick="this.closest('.encerrar-confirm').remove()">Não</button>
           <button class="btn-encerrar-ok" onclick="NIT_PLANOP.Actions._doEncerrar()">Sim, encerrar</button>
         </div>`;
-      wrap.appendChild(div);
+      menu?.appendChild(div);
     },
 
     async _doEncerrar() {
@@ -2291,6 +2314,11 @@ const NIT_PLANOP = (() => {
 
   /* ── FECHAR DROPDOWN AO CLICAR FORA ─────────────────────── */
   document.addEventListener('click', () => {
+    // Fechar settings menu
+    const sm = $('settings-menu');
+    if (sm && !sm.classList.contains('hidden')) {
+      sm.classList.add('hidden'); sm.innerHTML = '';
+    }
     if (S._dropAberto) {
       const drop = document.getElementById(S._dropAberto);
       if (drop) drop.classList.remove('open');
