@@ -49,8 +49,8 @@
   --ease-out:   cubic-bezier(0.16,1,0.3,1);
 
   /* Sidebar */
-  --sidebar-w: 300px;
-  --right-w:   300px;
+  --sidebar-w: 320px;
+  --right-w:   320px;
 
   /* ── LIFECYCLE DE OPERAÇÃO — sistema semiótico de duas camadas ──
      Camada 1 (sidebar dots): andamento temporal da operação
