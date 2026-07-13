@@ -162,6 +162,9 @@ const NIT_PLANOP = (() => {
   };
 
   const opIcon = tipo => CFG.OP_ICONS[tipo] || CFG.OP_ICONS.default;
+  // Versão maior para o top bar (28x28)
+  const opIconLg = tipo => (CFG.OP_ICONS[tipo] || CFG.OP_ICONS.default)
+    .replace(/width="15"/g, 'width="28"').replace(/height="15"/g, 'height="28"');
 
   // Cor do avatar a partir do nome (determinística)
   const AVATAR_COLORS = [
@@ -973,7 +976,7 @@ const NIT_PLANOP = (() => {
       cont.innerHTML = `
         <!-- Top bar -->
         <div class="op-topbar">
-          <div class="op-topbar-icon">${opIcon(op.tipoMissao)}</div>
+          <div class="op-topbar-icon">${opIconLg(op.tipoMissao)}</div>
           <div class="op-topbar-info">
             <div class="op-topbar-name">
               ${esc(titleCase(op.nome||'—'))}
@@ -2346,7 +2349,11 @@ const NIT_PLANOP = (() => {
     async salvarSupervisaoPadrao() {
       const escala = S.escalas[S.escalaAtiva];
       if (!escala) return;
+      const btn = document.querySelector('.btn-salvar-padrao');
+      if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; }
       await DB.salvarSupervisaoPadrao(escala.turno);
+      if (btn) { btn.textContent = 'Salvar como padrão para este turno'; btn.disabled = false; }
+      toast(`Supervisão padrão salva para o turno ${escala.turno}`, 'success');
       toast(`Padrão ${turnoLabel(escala)} salvo!`, 'success');
     },
 
