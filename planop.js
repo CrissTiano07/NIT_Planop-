@@ -1368,7 +1368,7 @@ const NIT_PLANOP = (() => {
         (r.status === 'indisponivel' || r.status === 'ausente'));
       const ausentes      = []; // fundido em indisponiveis acima
 
-      if (count) count.textContent = disponiveis.length;
+      // totais renderizados via efetivo-totais acima
 
       const filtrar = arr => busca
         ? arr.filter(([,r]) => (r.nome||'').toLowerCase().includes(busca))
