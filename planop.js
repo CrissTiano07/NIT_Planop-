@@ -244,11 +244,27 @@ const NIT_PLANOP = (() => {
     async _resolveRole(user) {
       if (!user.email) { S.role = 'campo'; return; }
       try {
-        const snap = await firebase.database()
-          .ref(`efetivo_roles/${user.email.replace(/\./g,'_').replace(/@/g,'_at_')}`)
-          .once('value');
-        S.role = snap.exists() ? snap.val() : 'campo';
-      } catch { S.role = 'campo'; }
+        const key  = user.email.replace(/\./g,'_').replace(/@/g,'_at_');
+        // Tenta /efetivo_roles/{key}/role (string direta)
+        // Se não existir, tenta /efetivo_roles/{key} (objeto { role: "..." })
+        const snapRole = await firebase.database()
+          .ref(`efetivo_roles/${key}/role`).once('value');
+        if (snapRole.exists()) {
+          S.role = snapRole.val();
+          return;
+        }
+        const snapObj = await firebase.database()
+          .ref(`efetivo_roles/${key}`).once('value');
+        if (snapObj.exists()) {
+          const val = snapObj.val();
+          S.role = typeof val === 'string' ? val : (val?.role || 'campo');
+          return;
+        }
+        S.role = 'campo';
+      } catch (e) {
+        console.error('[Auth._resolveRole]', e);
+        S.role = 'campo';
+      }
     },
 
     login() {
@@ -588,17 +604,8 @@ const NIT_PLANOP = (() => {
     // Relógio em tempo real
     _clockTick: null,
     _initClock() {
-      // Guard: não criar múltiplos intervals se init for chamado de novo
+      // Relógios removidos da UI — clock tick não necessário
       if (UI._clockTick) clearInterval(UI._clockTick);
-      const tick = () => {
-        const h = getHoraAtual();
-        ['shift-clock','topbar-clock'].forEach(id => {
-          const el = $(id);
-          if (el && el.textContent !== h) el.textContent = h;
-        });
-      };
-      tick();
-      UI._clockTick = setInterval(tick, 1000);
     },
 
     popularSelectTipos() {
@@ -988,7 +995,6 @@ const NIT_PLANOP = (() => {
               </button>
             </div>
             <span class="topbar-date">Hoje</span>
-            <span class="topbar-clock" id="topbar-clock">${getHoraAtual()}</span>
           </div>
         </div>
 
