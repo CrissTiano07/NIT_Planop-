@@ -1443,3 +1443,37 @@ input:focus {
 .qru-sub, .staff-sub-line, .ops-item-sub, .op-topbar-sub {
   line-height: 1.45;
 }
+
+/* ── SETTINGS MENU (gear icon) ───────────────────────── */
+.settings-wrap { position: relative; }
+.settings-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 200; overflow: hidden;
+  animation: fadeIn var(--dur-fast);
+}
+.settings-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: 10px 14px 4px;
+}
+.settings-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 9px 14px;
+  background: none; border: none; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.settings-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+.settings-item-danger { color: var(--danger); }
+.settings-item-danger:hover { background: var(--danger-dim); color: var(--danger); }
+.encerrar-confirm {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--danger);
+  background: var(--danger-dim);
+}
