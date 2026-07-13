@@ -1004,14 +1004,14 @@ const NIT_PLANOP = (() => {
             <div class="metrica-sub">postos ativos</div>
           </div>
           <div class="metrica-card">
-            <div class="metrica-label">Sem ninguém</div>
+            <div class="metrica-label">Postos vazios</div>
             <div class="metrica-num ${semNinguem>0?'danger':'success'}">${semNinguem}</div>
-            <div class="metrica-sub">${semNinguem>0?'precisam de designação':'todos cobertos'}</div>
+            <div class="metrica-sub">${semNinguem===0?'todos designados':'aguardam designação'}</div>
           </div>
           <div class="metrica-card">
-            <div class="metrica-label">Orientadores no posto</div>
+            <div class="metrica-label">Em campo agora</div>
             <div class="metrica-num">${totalOri}</div>
-            <div class="metrica-sub">no campo agora</div>
+            <div class="metrica-sub">orientadores no posto</div>
           </div>
           <div class="metrica-card">
             <div class="metrica-label">Cobertura</div>
