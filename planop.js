@@ -881,7 +881,7 @@ const NIT_PLANOP = (() => {
         return `<div class="ops-item ${ativo}" onclick="NIT_PLANOP.UI.selOp('${id}')">
           <div class="ops-item-icon">${icon}</div>
           <div class="ops-item-body">
-            <div class="ops-item-name">${esc(titleCase(op.nome||'—'))}</div>
+            <div class="ops-item-name">${esc(titleCase(op.tipoMissao||op.nome||'—'))}</div>
             <div class="ops-item-sub">${esc([titleCase(op.bairro||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))}</div>
           </div>
           <span class="ops-status-dot ${dot}"></span>
