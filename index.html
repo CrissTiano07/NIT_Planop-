@@ -240,9 +240,19 @@
   <!-- ── COLUNA 3: PAINEL DIREITO ──────────────────────── -->
   <aside class="right-panel" id="right-panel">
     <div class="right-header">
-      <span class="section-label">DISPONÍVEIS</span>
-      <span id="disponiveis-count" class="section-count">0</span>
+      <span class="section-label">EFETIVO</span>
+      ${canWrite() ? '' : ''}
+      <button class="btn-cadastrar-pessoa" onclick="NIT_PLANOP.UI.abrirCadastrarPessoa()"
+        title="Cadastrar novo orientador">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
     </div>
+
+    <!-- Totais do efetivo -->
+    <div class="efetivo-totais" id="efetivo-totais"></div>
+
     <p class="right-hint">Arraste para o QRU ou clique em + Adicionar</p>
     <div class="right-search">
       <input id="right-busca" type="text" placeholder="Filtrar..."
