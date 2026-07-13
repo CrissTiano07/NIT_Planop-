@@ -1312,8 +1312,8 @@ const NIT_PLANOP = (() => {
 
     // ── PAINEL DIREITO (staff disponíveis)
     renderRightPanel() {
-      const lista = $('staff-lista');
-      const count = $('disponiveis-count');
+      const lista  = $('staff-lista');
+      const totais = $('efetivo-totais');
       if (!lista) return;
 
       const busca = S._buscaStaff.toLowerCase().trim();
@@ -1322,14 +1322,41 @@ const NIT_PLANOP = (() => {
         .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'));
 
       // Índice invertido — fonte de verdade para quem está em posto.
-      // Tem precedência sobre r.status, que pode estar momentaneamente
-      // desatualizado após um write otimista.
       const postoByRecurso = {};
       Object.values(S.postos).forEach(p => {
         Object.keys(p.orientadores||{}).forEach(rId => {
           postoByRecurso[rId] = p;
         });
       });
+
+      // ── Totais do efetivo ─────────────────────────────────
+      const total = todos.length;
+      const nDisp = todos.filter(([rId,r]) => !postoByRecurso[rId] && r.status === 'disponivel').length;
+      const nEsc  = todos.filter(([rId,r]) => !!postoByRecurso[rId] || r.status === 'escalado').length;
+      const nInd  = todos.filter(([,r]) =>
+        r.status === 'indisponivel' || r.status === 'ausente').length;
+
+      if (totais) {
+        totais.innerHTML = `
+          <div class="efetivo-total-grid">
+            <div class="etotal-item">
+              <span class="etotal-num">${total}</span>
+              <span class="etotal-label">Total</span>
+            </div>
+            <div class="etotal-item success">
+              <span class="etotal-num">${nDisp}</span>
+              <span class="etotal-label">Disponíveis</span>
+            </div>
+            <div class="etotal-item accent">
+              <span class="etotal-num">${nEsc}</span>
+              <span class="etotal-label">Escalados</span>
+            </div>
+            <div class="etotal-item ${nInd > 0 ? 'warning' : ''}">
+              <span class="etotal-num">${nInd}</span>
+              <span class="etotal-label">Ausentes</span>
+            </div>
+          </div>`;
+      }
 
       // Fix 1: se aparece em postoByRecurso → escalado (independente do status Firebase)
       const disponiveis   = todos.filter(([rId, r]) =>
@@ -1708,6 +1735,63 @@ const NIT_PLANOP = (() => {
     },
 
     // Fix 6: debounce — evita renderRightPanel em cada keystroke
+    abrirCadastrarPessoa() {
+      document.getElementById('cadastrar-pessoa-form')?.remove();
+      const container = $('efetivo-totais');
+      if (!container) return;
+
+      const formHTML = `
+        <div id="cadastrar-pessoa-form" class="posto-form-inline" style="margin:8px 0">
+          <div class="posto-form-header">Novo cadastro</div>
+
+          <label class="form-label">Nome completo *</label>
+          <input id="cp-nome" type="text" class="input-sm"
+            placeholder="Nome do orientador" autocomplete="off">
+
+          <label class="form-label">Cargo</label>
+          <div class="combo-wrap">
+            <input id="cp-cargo-input" type="text" class="input-sm"
+              placeholder="Cargo..." autocomplete="off">
+            <div id="cp-cargo-list" class="combo-drop"></div>
+          </div>
+
+          <label class="form-label">Turno padrão</label>
+          <div class="combo-wrap">
+            <input id="cp-turno-input" type="text" class="input-sm"
+              placeholder="Turno..." autocomplete="off">
+            <div id="cp-turno-list" class="combo-drop"></div>
+          </div>
+
+          <label class="form-label">Contato <span class="form-hint">opcional</span></label>
+          <input id="cp-contato" type="tel" class="input-sm" placeholder="85 9 9999-0000">
+
+          <div class="posto-form-footer">
+            <button class="btn-ghost-sm"
+              onclick="document.getElementById('cadastrar-pessoa-form')?.remove()">
+              Cancelar
+            </button>
+            <button class="btn-accent-sm"
+              onclick="NIT_PLANOP.Actions.confirmarCadastrarPessoa()">
+              Cadastrar
+            </button>
+          </div>
+        </div>`;
+
+      container.insertAdjacentHTML('afterend', formHTML);
+
+      UI._combo('cp-cargo-input', 'cp-cargo-list',
+        Object.keys(CFG.CARGO_ABBR).map(c => ({ value: c, label: c })),
+        (v) => { $('cp-cargo-input').value = v; }
+      );
+      UI._combo('cp-turno-input', 'cp-turno-list',
+        [{ value:'manha', label:'Manhã' },
+         { value:'tarde', label:'Tarde' },
+         { value:'noite', label:'Noite' }],
+        (v, l) => { $('cp-turno-input').value = l; }
+      );
+      setTimeout(() => $('cp-nome')?.focus(), 60);
+    },
+
     filtrarStaff(val) {
       S._buscaStaff = val;
       clearTimeout(S._staffDebounce);
@@ -2143,6 +2227,39 @@ const NIT_PLANOP = (() => {
         ? `${titleCase(r?.nome||'')} → Indisponível`
         : `${titleCase(r?.nome||'')} → Disponível`;
       toast(label, status === 'disponivel' ? 'success' : 'warning');
+    },
+
+    async confirmarCadastrarPessoa() {
+      const nome    = $('cp-nome')?.value.trim();
+      const cargo   = $('cp-cargo-input')?.value.trim().toUpperCase() || 'ORIENTADOR';
+      const turnoIn = $('cp-turno-input');
+      const turno   = turnoIn?.dataset.selectedValue || 'manha';
+      const contato = $('cp-contato')?.value.trim() || '';
+
+      if (!nome) {
+        toast('Nome é obrigatório', 'warning');
+        $('cp-nome')?.focus();
+        return;
+      }
+
+      const ref = await S.db.ref('efetivo/recursos').push({
+        nome:         upper(nome),
+        cargo:        cargo,
+        turno_padrao: turno,
+        contato,
+        status:       'disponivel',
+        criadoEm:     Date.now()
+      });
+
+      // Update otimista
+      S.recursos[ref.key] = {
+        nome: upper(nome), cargo, turno_padrao: turno,
+        contato, status: 'disponivel'
+      };
+
+      document.getElementById('cadastrar-pessoa-form')?.remove();
+      UI.renderRightPanel();
+      toast(`${nome} cadastrado!`, 'success');
     },
 
     async confirmarAddMembro() {
