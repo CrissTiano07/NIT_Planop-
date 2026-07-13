@@ -1765,6 +1765,21 @@ const NIT_PLANOP = (() => {
           <label class="form-label">Contato <span class="form-hint">opcional</span></label>
           <input id="cp-contato" type="tel" class="input-sm" placeholder="85 9 9999-0000">
 
+          <label class="form-label">Bairro <span class="form-hint">opcional</span></label>
+          <div class="combo-wrap">
+            <input id="cp-bairro-input" type="text" class="input-sm"
+              placeholder="Bairro onde mora..." autocomplete="off">
+            <div id="cp-bairro-list" class="combo-drop"></div>
+          </div>
+
+          <label class="form-label">Transporte <span class="form-hint">opcional</span></label>
+          <div class="combo-wrap">
+            <input id="cp-transporte-input" type="text" class="input-sm"
+              placeholder="Selecionar..." autocomplete="off" readonly
+              onclick="NIT_PLANOP.UI._openTransporteCombo()">
+            <div id="cp-transporte-list" class="combo-drop"></div>
+          </div>
+
           <div class="posto-form-footer">
             <button class="btn-ghost-sm"
               onclick="document.getElementById('cadastrar-pessoa-form')?.remove()">
@@ -1788,6 +1803,19 @@ const NIT_PLANOP = (() => {
          { value:'tarde', label:'Tarde' },
          { value:'noite', label:'Noite' }],
         (v, l) => { $('cp-turno-input').value = l; }
+      );
+      UI._combo('cp-bairro-input', 'cp-bairro-list',
+        CFG.BAIRROS.map(b => ({ value: b, label: b })),
+        (v) => { $('cp-bairro-input').value = v; }
+      );
+      UI._combo('cp-transporte-input', 'cp-transporte-list',
+        [{ value:'veiculo_proprio', label:'Veículo próprio' },
+         { value:'transporte_publico', label:'Transporte público' },
+         { value:'moto', label:'Motocicleta própria' }],
+        (v, l) => {
+          const inp = $('cp-transporte-input');
+          if (inp) { inp.value = l; inp.dataset.selectedValue = v; }
+        }
       );
       setTimeout(() => $('cp-nome')?.focus(), 60);
     },
@@ -2230,11 +2258,13 @@ const NIT_PLANOP = (() => {
     },
 
     async confirmarCadastrarPessoa() {
-      const nome    = $('cp-nome')?.value.trim();
-      const cargo   = $('cp-cargo-input')?.value.trim().toUpperCase() || 'ORIENTADOR';
-      const turnoIn = $('cp-turno-input');
-      const turno   = turnoIn?.dataset.selectedValue || 'manha';
-      const contato = $('cp-contato')?.value.trim() || '';
+      const nome      = $('cp-nome')?.value.trim();
+      const cargo     = $('cp-cargo-input')?.value.trim().toUpperCase() || 'ORIENTADOR';
+      const turnoIn   = $('cp-turno-input');
+      const turno     = turnoIn?.dataset.selectedValue || 'manha';
+      const contato   = $('cp-contato')?.value.trim() || '';
+      const bairro    = $('cp-bairro-input')?.value.trim() || '';
+      const transp    = $('cp-transporte-input')?.dataset.selectedValue || '';
 
       if (!nome) {
         toast('Nome é obrigatório', 'warning');
@@ -2242,21 +2272,20 @@ const NIT_PLANOP = (() => {
         return;
       }
 
-      const ref = await S.db.ref('efetivo/recursos').push({
+      const payload = {
         nome:         upper(nome),
-        cargo:        cargo,
+        cargo,
         turno_padrao: turno,
         contato,
         status:       'disponivel',
         criadoEm:     Date.now()
-      });
-
-      // Update otimista
-      S.recursos[ref.key] = {
-        nome: upper(nome), cargo, turno_padrao: turno,
-        contato, status: 'disponivel'
       };
+      if (bairro)  payload.bairro     = upper(bairro);
+      if (transp)  payload.transporte = transp;
 
+      const ref = await S.db.ref('efetivo/recursos').push(payload);
+
+      S.recursos[ref.key] = { ...payload };
       document.getElementById('cadastrar-pessoa-form')?.remove();
       UI.renderRightPanel();
       toast(`${nome} cadastrado!`, 'success');
