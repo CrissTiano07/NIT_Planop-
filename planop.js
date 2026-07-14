@@ -472,7 +472,14 @@ const NIT_PLANOP = (() => {
         supervisaoFixa[sf.id] = { nome:sf.nome, cargo:sf.cargo, fixo:true, contato:'' };
       });
       // Tentar aplicar padrão salvo
-      const padrao = await S.db.ref(`efetivo/config/supervisao_padrao_${dados.turno}`).once('value');
+      // Tenta Firebase, fallback para localStorage (caso /efetivo/config/ sem permissão)
+      let padrao = null;
+      try {
+        padrao = await S.db.ref(`efetivo/supervisao_config/padrao_${dados.turno}`).once('value');
+      } catch {
+        const local = localStorage.getItem(`sup_padrao_${dados.turno}`);
+        padrao = { exists: () => !!local, val: () => local ? JSON.parse(local) : null };
+      }
       if (padrao.exists()) {
         await S.db.ref(`efetivo/escalas/${ref.key}/supervisao`).set({
           ...supervisaoFixa, ...padrao.val()
@@ -563,7 +570,13 @@ const NIT_PLANOP = (() => {
       const semFixos = Object.fromEntries(
         Object.entries(sup).filter(([,v]) => !v.fixo)
       );
-      await S.db.ref(`efetivo/config/supervisao_padrao_${turno}`).set(semFixos);
+      // Grava em /efetivo/supervisao_config/ (precisa de regra no Firebase)
+      // Fallback: localStorage para não perder a funcionalidade se regra não existir
+      try {
+        await S.db.ref(`efetivo/supervisao_config/padrao_${turno}`).set(semFixos);
+      } catch {
+        localStorage.setItem(`sup_padrao_${turno}`, JSON.stringify(semFixos));
+      }
     },
 
     async adicionarPosto(dados) {
@@ -1030,7 +1043,8 @@ const NIT_PLANOP = (() => {
           <span class="qru-section-label">Postos / QRUs</span>
           <input class="qru-search" placeholder="Filtrar postos..."
             oninput="NIT_PLANOP.UI.filtrarQrus(this.value)">
-          <button class="btn-expandir" onclick="NIT_PLANOP.UI.expandirTodos()">
+          <button class="btn-expandir" id="btn-expandir-todos"
+            onclick="NIT_PLANOP.UI.toggleExpandirTodos()">
             Expandir todos
           </button>
           ${canWrite() ? `<button class="btn-add-posto"
@@ -1181,8 +1195,17 @@ const NIT_PLANOP = (() => {
       if (btn) btn.textContent = aberto ? '▾ Detalhes do posto' : '▸ Detalhes do posto';
     },
 
-    expandirTodos() {
-      document.querySelectorAll('.qru-card').forEach(c => c.classList.add('expanded'));
+    toggleExpandirTodos() {
+      const cards = document.querySelectorAll('.qru-card');
+      const btn   = document.getElementById('btn-expandir-todos');
+      const algumColapsado = [...cards].some(c => !c.classList.contains('expanded'));
+      if (algumColapsado) {
+        cards.forEach(c => c.classList.add('expanded'));
+        if (btn) btn.textContent = 'Colapsar todos';
+      } else {
+        cards.forEach(c => c.classList.remove('expanded'));
+        if (btn) btn.textContent = 'Expandir todos';
+      }
     },
 
     filtrarQrus(val) {
