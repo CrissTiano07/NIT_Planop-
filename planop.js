@@ -981,11 +981,6 @@ const NIT_PLANOP = (() => {
         .filter(([,p]) => p.operacaoId === S.operacaoSel)
         .sort(([,a],[,b]) => (a.numero||0)-(b.numero||0));
 
-      // Métricas
-      const semNinguem = postos.filter(([,p]) => !Object.keys(p.orientadores||{}).length).length;
-      const totalOri   = postos.reduce((s,[,p]) => s+Object.keys(p.orientadores||{}).length, 0);
-      const cobertura  = postos.length ? Math.round(((postos.length-semNinguem)/postos.length)*100) : 0;
-
       cont.innerHTML = `
         <!-- Top bar -->
         <div class="op-topbar">
@@ -1014,29 +1009,6 @@ const NIT_PLANOP = (() => {
           </div>
         </div>
 
-        <!-- Métricas -->
-        <div class="metricas-grid">
-          <div class="metrica-card">
-            <div class="metrica-label">QRUs</div>
-            <div class="metrica-num">${postos.length}</div>
-            <div class="metrica-sub">postos ativos</div>
-          </div>
-          <div class="metrica-card">
-            <div class="metrica-label">Postos vazios</div>
-            <div class="metrica-num ${semNinguem>0?'danger':'success'}">${semNinguem}</div>
-            <div class="metrica-sub">${semNinguem===0?'todos designados':'aguardam designação'}</div>
-          </div>
-          <div class="metrica-card">
-            <div class="metrica-label">Em campo agora</div>
-            <div class="metrica-num">${totalOri}</div>
-            <div class="metrica-sub">orientadores no posto</div>
-          </div>
-          <div class="metrica-card">
-            <div class="metrica-label">Cobertura</div>
-            <div class="metrica-num ${cobertura<100?'warning':'success'}">${cobertura}%</div>
-            <div class="metrica-sub">dos postos cobertos</div>
-          </div>
-        </div>
 
         <!-- QRUs -->
         <div class="qru-section-header">
@@ -1649,22 +1621,6 @@ const NIT_PLANOP = (() => {
           </div>`;
         }).join('');
       }
-      UI._patchMetrics();
-    },
-
-    _patchMetrics() {
-      const postos     = Object.values(S.postos).filter(p => p.operacaoId === S.operacaoSel);
-      const semNinguem = postos.filter(p => !Object.keys(p.orientadores||{}).length).length;
-      const totalOri   = postos.reduce((s,p) => s+Object.keys(p.orientadores||{}).length,0);
-      const cobertura  = postos.length
-        ? Math.round(((postos.length-semNinguem)/postos.length)*100) : 0;
-      const nums = document.querySelectorAll('.metrica-num');
-      if (nums[0]) nums[0].textContent = postos.length;
-      if (nums[1]) { nums[1].textContent = semNinguem;
-        nums[1].className = `metrica-num ${semNinguem>0?'danger':'success'}`; }
-      if (nums[2]) nums[2].textContent = totalOri;
-      if (nums[3]) { nums[3].textContent = `${cobertura}%`;
-        nums[3].className = `metrica-num ${cobertura<100?'warning':'success'}`; }
     },
 
     dragStartStaff(event, rId) {
