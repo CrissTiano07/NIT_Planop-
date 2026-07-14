@@ -2372,7 +2372,7 @@ const NIT_PLANOP = (() => {
     },
 
     async _doEncerrar() {
-      document.querySelector('.encerrar-confirm')?.remove();
+      document.getElementById('encerrar-confirm-overlay')?.remove();
       vibrar([60,40,60]);
       await DB.encerrarEscala(S.escalaAtiva, '');
       S.operacaoSel = null;
