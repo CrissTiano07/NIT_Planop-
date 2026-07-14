@@ -625,29 +625,6 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 
 /* Métricas */
-.metricas-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-3); margin-bottom: var(--space-5);
-}
-.metrica-card {
-  background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: var(--space-4);
-}
-.metrica-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text-muted);
-  margin-bottom: var(--space-2);
-}
-.metrica-num {
-  font-size: 28px; font-weight: 700; line-height: 1;
-  font-family: var(--font-mono);
-  color: var(--text-primary); margin-bottom: 4px;
-}
-.metrica-num.danger { color: var(--danger); }
-.metrica-num.warning { color: var(--warning); }
-.metrica-num.success { color: var(--success); }
-.metrica-sub { font-size: 10px; color: var(--text-muted); }
-
 /* QRU header */
 .qru-section-header {
   display: flex; align-items: center; gap: var(--space-3);
@@ -1353,8 +1330,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   .sidebar { display: none; }
   .right-panel { display: none; }
   .main-panel { height: calc(100vh - 56px); }
-  .metricas-grid { grid-template-columns: 1fr 1fr; }
-}
+  }
 
 /* Confirmação inline — substitui confirm() nativo */
 .encerrar-confirm {
@@ -1447,8 +1423,6 @@ input:focus {
 }
 
 /* Números sempre tabulares em contexto de dados */
-.metrica-num { font-feature-settings: "tnum"; }
-
 /* Linha de leitura mais confortável em textos de apoio */
 .qru-sub, .staff-sub-line, .ops-item-sub, .op-topbar-sub {
   line-height: 1.45;
