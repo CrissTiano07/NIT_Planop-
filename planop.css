@@ -1381,13 +1381,16 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 
 /* Inline confirm nos cards de QRU e ops */
 .inline-confirm {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3);
   background: var(--bg-card); border: 1px solid var(--border-strong);
   border-radius: var(--radius); margin-top: var(--space-2);
   font-size: 11px; color: var(--text-secondary);
   animation: fadeIn var(--dur-fast);
-  flex-wrap: wrap;
+}
+.inline-confirm span { line-height: 1.4; }
+.inline-confirm > div {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
 }
 .inline-confirm span { flex: 1; }
 .btn-danger-sm {
@@ -1525,3 +1528,20 @@ input:focus {
 .etotal-item.success .etotal-num { color: var(--success); }
 .etotal-item.accent  .etotal-num { color: var(--accent); }
 .etotal-item.warning .etotal-num { color: var(--warning); }
+
+/* Overlay de confirmação do encerrar turno */
+.encerrar-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 600;
+  animation: fadeIn var(--dur-fast);
+}
+.encerrar-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  min-width: 280px; max-width: 360px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
