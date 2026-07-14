@@ -2340,20 +2340,35 @@ const NIT_PLANOP = (() => {
 
     async encerrarTurno() {
       if (!S.escalaAtiva) return;
-      // Confirm inline no settings menu
-      const menu = $('settings-menu');
-      if (menu?.querySelector('.encerrar-confirm')) {
-        menu.querySelector('.encerrar-confirm').remove(); return;
-      }
-      const div = document.createElement('div');
-      div.className = 'encerrar-confirm';
-      div.innerHTML = `
-        <p class="encerrar-confirm-msg">Encerrar turno? Orientadores serão liberados.</p>
-        <div class="encerrar-confirm-btns">
-          <button class="btn-ghost-sm" onclick="this.closest('.encerrar-confirm').remove()">Não</button>
-          <button class="btn-encerrar-ok" onclick="NIT_PLANOP.Actions._doEncerrar()">Sim, encerrar</button>
+
+      // Remove confirm anterior se existir
+      document.getElementById('encerrar-confirm-overlay')?.remove();
+
+      // Confirm no body — não dentro do settings-menu (que é destruído pelo document.click)
+      const overlay = document.createElement('div');
+      overlay.id = 'encerrar-confirm-overlay';
+      overlay.className = 'encerrar-overlay';
+      overlay.innerHTML = `
+        <div class="encerrar-dialog" onclick="event.stopPropagation()">
+          <p class="encerrar-confirm-msg">Encerrar o turno?<br>
+            <span style="font-size:10px;color:var(--text-muted)">
+              Todos os orientadores escalados serão liberados.
+            </span>
+          </p>
+          <div class="encerrar-confirm-btns">
+            <button class="btn-ghost-sm"
+              onclick="document.getElementById('encerrar-confirm-overlay')?.remove()">
+              Cancelar
+            </button>
+            <button class="btn-encerrar-ok"
+              onclick="NIT_PLANOP.Actions._doEncerrar()">
+              Encerrar turno
+            </button>
+          </div>
         </div>`;
-      menu?.appendChild(div);
+      overlay.addEventListener('click', () =>
+        document.getElementById('encerrar-confirm-overlay')?.remove());
+      document.body.appendChild(overlay);
     },
 
     async _doEncerrar() {
@@ -2427,22 +2442,43 @@ const NIT_PLANOP = (() => {
     async _doDeletarOp(opId) {
       document.querySelector('.inline-confirm')?.remove();
       vibrar([60,40,60]);
+
       const postosOp = Object.entries(S.postos).filter(([,p]) => p.operacaoId === opId);
+
+      // Bug 3 fix: coletar TODOS os recursos a liberar antes de qualquer delete.
+      // O emOutro é calculado com S.postos intacto — sem mutação durante o loop.
+      const postosIds  = new Set(postosOp.map(([pid]) => pid));
+      const aLiberar   = new Set();
       for (const [pid, posto] of postosOp) {
         for (const rId of Object.keys(posto.orientadores||{})) {
+          // Só libera se o recurso não está em OUTRO posto (fora desta operação)
           const emOutro = Object.entries(S.postos)
-            .some(([id2,p2]) => id2!==pid && p2.orientadores?.[rId]);
-          if (!emOutro) {
-            await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
-            if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
-          }
+            .some(([id2, p2]) => !postosIds.has(id2) && p2.orientadores?.[rId]);
+          if (!emOutro) aLiberar.add(rId);
         }
-        await S.db.ref(`efetivo/postos/${pid}`).remove();
-        delete S.postos[pid];  // update otimista
       }
+
+      // 1. Liberar recursos (batch update único)
+      if (aLiberar.size) {
+        const updates = {};
+        aLiberar.forEach(rId => {
+          updates[`${rId}/status`] = 'disponivel';
+          if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
+        });
+        await S.db.ref('efetivo/recursos').update(updates);
+      }
+
+      // 2. Deletar postos
+      for (const [pid] of postosOp) {
+        await S.db.ref(`efetivo/postos/${pid}`).remove();
+        delete S.postos[pid];
+      }
+
+      // 3. Deletar operação
       await S.db.ref(`efetivo/operacoes/${opId}`).remove();
-      delete S.operacoes[opId];  // update otimista
+      delete S.operacoes[opId];
       if (S.operacaoSel === opId) S.operacaoSel = null;
+
       UI.renderOpsList();
       UI.renderMainContent();
       UI.renderRightPanel();
