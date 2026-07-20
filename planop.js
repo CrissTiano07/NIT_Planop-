@@ -1699,6 +1699,11 @@ const NIT_PLANOP = (() => {
 
           <!-- Ações de status -->
           <div class="sp-divider"></div>
+          <button class="sp-opt sp-edit-btn"
+            onclick="NIT_PLANOP.UI.abrirEditarPessoa('${rId}')">
+            ✏ Editar dados
+          </button>
+          <div class="sp-divider"></div>
           <div class="sp-opcoes">
             ${postoAtual ? `
             <button class="sp-opt warning"
@@ -1827,6 +1832,95 @@ const NIT_PLANOP = (() => {
         }
       );
       setTimeout(() => $('cp-nome')?.focus(), 60);
+    },
+
+    abrirEditarPessoa(rId) {
+      document.querySelectorAll('.status-popover').forEach(p => p.remove());
+      const r = S.recursos[rId];
+      if (!r) return;
+
+      document.getElementById('editar-pessoa-form')?.remove();
+
+      const turnoLabel = { manha:'Manhã', tarde:'Tarde', noite:'Noite' };
+      const transpLabel = {
+        veiculo_proprio: 'Veículo próprio',
+        transporte_publico: 'Transporte público'
+      };
+
+      const formHTML = `
+        <div id="editar-pessoa-form" class="editar-pessoa-overlay"
+          onclick="if(event.target===this)this.remove()">
+          <div class="editar-pessoa-dialog" onclick="event.stopPropagation()">
+            <div class="posto-form-header">Editar — ${esc(titleCase(r.nome||rId))}</div>
+
+            <label class="form-label">Nome completo *</label>
+            <input id="ep2-nome" type="text" class="input-sm" value="${esc(r.nome||'')}">
+
+            <label class="form-label">Cargo</label>
+            <div class="combo-wrap">
+              <input id="ep2-cargo-input" type="text" class="input-sm"
+                value="${esc(r.cargo||'')}" autocomplete="off">
+              <div id="ep2-cargo-list" class="combo-drop"></div>
+            </div>
+
+            <label class="form-label">Turno padrão</label>
+            <div class="combo-wrap">
+              <input id="ep2-turno-input" type="text" class="input-sm"
+                value="${esc(turnoLabel[r.turno_padrao]||r.turno_padrao||'')}"
+                autocomplete="off">
+              <div id="ep2-turno-list" class="combo-drop"></div>
+            </div>
+
+            <label class="form-label">Contato</label>
+            <input id="ep2-contato" type="tel" class="input-sm"
+              value="${esc(r.contato||'')}" placeholder="85 9 9999-0000">
+
+            <label class="form-label">Bairro</label>
+            <div class="combo-wrap">
+              <input id="ep2-bairro-input" type="text" class="input-sm"
+                value="${esc(r.bairro ? titleCase(r.bairro) : '')}" autocomplete="off">
+              <div id="ep2-bairro-list" class="combo-drop"></div>
+            </div>
+
+            <label class="form-label">Transporte</label>
+            <div class="combo-wrap">
+              <input id="ep2-transp-input" type="text" class="input-sm"
+                value="${esc(transpLabel[r.transporte]||'')}"
+                placeholder="Selecionar..." autocomplete="off" readonly
+                onclick="NIT_PLANOP.UI._openTransporteCombo2()">
+              <div id="ep2-transp-list" class="combo-drop"></div>
+            </div>
+
+            <div class="posto-form-footer">
+              <button class="btn-ghost-sm"
+                onclick="document.getElementById('editar-pessoa-form')?.remove()">
+                Cancelar
+              </button>
+              <button class="btn-accent-sm"
+                onclick="NIT_PLANOP.Actions.confirmarEditarPessoa('${rId}')">
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', formHTML);
+
+      UI._combo('ep2-cargo-input','ep2-cargo-list',
+        Object.keys(CFG.CARGO_ABBR).map(c => ({ value:c, label:c })),
+        (v) => { $('ep2-cargo-input').value = v; });
+      UI._combo('ep2-turno-input','ep2-turno-list',
+        [{value:'manha',label:'Manhã'},{value:'tarde',label:'Tarde'},{value:'noite',label:'Noite'}],
+        (v,l) => { $('ep2-turno-input').value = l; $('ep2-turno-input').dataset.selectedValue = v; });
+      UI._combo('ep2-bairro-input','ep2-bairro-list',
+        CFG.BAIRROS.map(b => ({ value:b, label:b })),
+        (v) => { $('ep2-bairro-input').value = v; });
+      UI._combo('ep2-transp-input','ep2-transp-list',
+        [{value:'veiculo_proprio',label:'Veículo próprio'},
+         {value:'transporte_publico',label:'Transporte público'}],
+        (v,l) => { $('ep2-transp-input').value = l; $('ep2-transp-input').dataset.selectedValue = v; });
+
+      setTimeout(() => $('ep2-nome')?.focus(), 60);
     },
 
     filtrarStaff(val) {
@@ -2243,6 +2337,33 @@ const NIT_PLANOP = (() => {
       });
       UI.fecharNovaOp();
       toast('Operação criada!', 'success');
+    },
+
+    async confirmarEditarPessoa(rId) {
+      const nome   = $('ep2-nome')?.value.trim();
+      if (!nome) { toast('Nome é obrigatório','warning'); return; }
+
+      const cargo  = $('ep2-cargo-input')?.value.trim().toUpperCase() || 'ORIENTADOR';
+      const turnoI = $('ep2-turno-input');
+      const turno  = turnoI?.dataset.selectedValue || S.recursos[rId]?.turno_padrao || 'manha';
+      const contato= $('ep2-contato')?.value.trim()||'';
+      const bairro = $('ep2-bairro-input')?.value.trim()||'';
+      const transpI= $('ep2-transp-input');
+      const transp = transpI?.dataset.selectedValue || S.recursos[rId]?.transporte || '';
+
+      const updates = {
+        nome: upper(nome), cargo, turno_padrao: turno, contato,
+        bairro: bairro ? upper(bairro) : null,
+        transporte: transp || null,
+        updatedAt: Date.now()
+      };
+
+      await S.db.ref(`efetivo/recursos/${rId}`).update(updates);
+      if (S.recursos[rId]) Object.assign(S.recursos[rId], updates);
+
+      document.getElementById('editar-pessoa-form')?.remove();
+      UI.renderRightPanel();
+      toast('Dados atualizados!', 'success');
     },
 
     async liberarDoPosto(rId, postoId) {
