@@ -1844,6 +1844,9 @@ const NIT_PLANOP = (() => {
       }
       const chipsDiv = card.querySelector('.orientadores-chips');
       if (chipsDiv) {
+        // Fechar o painel de expansão antes de reconstruir os chips
+        const oldPanel = card.querySelector('.chip-expand-panel');
+        if (oldPanel) { oldPanel.classList.add('hidden'); oldPanel.innerHTML = ''; oldPanel.dataset.rId = ''; }
         chipsDiv.innerHTML = orientadores.map(([rId,ori]) => {
           const nome        = ori.nome || rId;
           const nomeDisplay = nome.split(' ')
@@ -1875,7 +1878,7 @@ const NIT_PLANOP = (() => {
 
     // Expansão inline da linha de staff — substitui o popover flutuante
     toggleChipExpand(postoId, rId, event) {
-      event.stopPropagation();
+      if (event?.stopPropagation) event.stopPropagation();
       const panel = document.getElementById(`chip-exp-${postoId}`);
       if (!panel) return;
 
@@ -1908,7 +1911,7 @@ const NIT_PLANOP = (() => {
         </div>
         <div class="exp-acoes">
           <button class="exp-btn ${ori.faltou?'exp-btn-active':''}"
-            onclick="NIT_PLANOP.Actions.toggleFalta('${postoId}','${rId}');NIT_PLANOP.UI.toggleChipExpand('${postoId}','','{skip}')">
+            onclick="NIT_PLANOP.Actions.toggleFalta('${postoId}','${rId}')">
             ⚠ ${ori.faltou ? 'Cancelar falta' : 'Registrar falta'}
           </button>
           <button class="exp-btn exp-btn-warning"
