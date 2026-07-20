@@ -1569,9 +1569,13 @@ input:focus {
 
 /* Textarea de observação */
 .textarea-obs {
-  resize: vertical; min-height: 52px;
+  resize: none;           /* não precisa de resize manual — cresce sozinha */
+  overflow: hidden;       /* esconde scrollbar durante o crescimento */
+  min-height: 36px;       /* mesma altura de um input-sm */
+  max-height: 200px;      /* limite para não dominar a tela */
   font-family: var(--font-ui); font-size: 12px;
   line-height: 1.5;
+  transition: height 0.1s ease;
 }
 .detalhes-obs-input.textarea-obs {
   width: 100%; background: var(--bg-card);
@@ -1631,4 +1635,52 @@ input:focus {
   max-width: 90vw; max-height: 90vh;
   border-radius: var(--radius-lg);
   box-shadow: 0 0 60px rgba(0,0,0,0.8);
+}
+
+/* Foto de referência: container com ações hover */
+.foto-ref-container {
+  position: relative; display: inline-block;
+}
+.foto-ref-actions {
+  position: absolute; top: 4px; right: 4px;
+  display: flex; gap: 3px;
+  opacity: 0; transition: opacity var(--dur-fast);
+}
+.foto-ref-container:hover .foto-ref-actions { opacity: 1; }
+.foto-action-btn {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(13,24,38,0.85); border: none;
+  color: var(--text-secondary); cursor: pointer;
+  font-size: 12px; display: flex; align-items: center; justify-content: center;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.foto-action-btn:hover { background: var(--bg-surface); color: var(--text-primary); }
+.foto-action-btn.danger:hover { background: var(--danger); color: #fff; }
+
+/* Foto placeholder: drag-over state */
+.foto-placeholder.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* Botão remover em registros */
+.foto-reg-del {
+  position: absolute; top: 2px; right: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: rgba(13,24,38,0.8); border: none;
+  color: var(--danger); cursor: pointer; font-size: 10px;
+  display: none; align-items: center; justify-content: center;
+}
+.foto-registro-wrap:hover .foto-reg-del { display: flex; }
+.foto-registro-wrap { position: relative; }
+
+/* Wrapper do botão + para drag&drop */
+.btn-add-registro-wrap {
+  display: inline-flex;
+  border-radius: var(--radius);
+}
+.btn-add-registro-wrap.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
 }
