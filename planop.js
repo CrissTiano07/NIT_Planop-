@@ -1278,7 +1278,10 @@ const NIT_PLANOP = (() => {
                 ondrop="NIT_PLANOP.UI.soltarFoto(event,'${postoId}','registro');this.classList.remove('drag-over')">
                 <button class="btn-add-registro"
                   onclick="NIT_PLANOP.UI.addFotoRegistro('${postoId}')"
-                  title="Adicionar · Ctrl+V · Arraste">+</button>
+                  title="Clique · Ctrl+V · Arraste">
+                  <span class="btn-add-reg-icon">+</span>
+                  <span class="btn-add-reg-hint">Ctrl+V</span>
+                </button>
               </div>` : ''}
           </div>
         </div>
@@ -3055,29 +3058,41 @@ const NIT_PLANOP = (() => {
       .map(el => el.id.replace('det-',''))
       .filter(Boolean);
 
-    // Preferir posto sem foto de referência
+    // Preferir posto sem foto de referência.
+    // Se todos já têm referência, usa o primeiro aberto.
     const semFoto = abertos.find(pid => !S.postos[pid]?.fotoReferencia);
     const alvo    = semFoto || abertos[0];
 
-    if (!alvo) return; // nenhum posto aberto — deixar o comportamento padrão
+    if (!alvo) return;
 
     e.preventDefault();
+    const temRef = !!S.postos[alvo]?.fotoReferencia;
     const file   = imgItem.getAsFile();
     const reader = new FileReader();
     reader.onload = async ev => {
       const compressed = await UI._compressImage(ev.target.result, 900, 0.72);
-      // Suppress: evita que o listener reconstrua o card e colapsa os detalhes
       S._suppressRender = true;
       setTimeout(() => { S._suppressRender = false; }, 800);
-      if (S.postos[alvo]) S.postos[alvo].fotoReferencia = compressed;
-      await S.db.ref(`efetivo/postos/${alvo}/fotoReferencia`).set(compressed);
-      UI._patchFotos(alvo); // atualiza só a seção de fotos
-      toast('Print colado!', 'success');
+
+      if (!temRef) {
+        // Slot de referência livre → vai para lá
+        if (S.postos[alvo]) S.postos[alvo].fotoReferencia = compressed;
+        await S.db.ref(`efetivo/postos/${alvo}/fotoReferencia`).set(compressed);
+        toast('Foto de referência colada!', 'success');
+      } else {
+        // Referência já ocupada → novo registro fotográfico
+        await S.db.ref(`efetivo/postos/${alvo}/fotosRegistro`).push({
+          data: compressed, timestamp: getHoraAtual()
+        });
+        toast('Registro fotográfico adicionado!', 'success');
+      }
+
+      UI._patchFotos(alvo);
     };
     reader.readAsDataURL(file);
 
     if (abertos.length > 1) {
-      toast(`Print colado no posto ${S.postos[alvo]?.numero||''}. Abra só um posto por vez para colar com precisão.`, 'info');
+      toast(`Colado no posto ${S.postos[alvo]?.numero||''}. Abra só um posto por vez para colar com precisão.`, 'info');
     }
   });
   // Ativar nas que já existem ao abrir detalhes
