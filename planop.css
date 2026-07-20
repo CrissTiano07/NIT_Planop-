@@ -1757,3 +1757,25 @@ input:focus {
 .exp-motivo-btn:hover, .exp-motivo-btn.active {
   border-color: var(--warning); color: var(--warning); background: var(--warning-dim);
 }
+
+/* Chip selecionado (acordeão ativo) */
+.orientador-chip.chip-sel {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.orientador-chip { transition: all var(--dur-fast); }
+
+/* Painel de expansão abaixo dos chips */
+.chip-expand-panel {
+  margin: 6px 0 4px;
+  padding: var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  animation: slideDown var(--dur-fast) var(--ease-out);
+}
+.chip-exp-nome {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-secondary); margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
