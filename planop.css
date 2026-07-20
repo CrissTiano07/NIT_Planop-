@@ -1545,3 +1545,24 @@ input:focus {
 }
 .sp-opt.warning { color: var(--warning); }
 .sp-opt.warning:hover { background: var(--warning-dim); }
+
+/* Editar pessoa — overlay modal */
+.editar-pessoa-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 600; animation: fadeIn var(--dur-fast);
+}
+.editar-pessoa-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  width: 320px; max-height: 90vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+.sp-edit-btn {
+  width: 100%; text-align: left;
+  border-top: 1px solid var(--border);
+}
