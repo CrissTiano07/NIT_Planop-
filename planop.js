@@ -1851,29 +1851,37 @@ const NIT_PLANOP = (() => {
       if (!card || !posto) return;
       const orientadores = Object.entries(posto.orientadores||{});
       const status       = orientadores.length===0 ? 'vazio' : 'parcial';
+
       card.className = (card.className.replace(/\bstatus-\w+\b/g, '') + ` status-${status}`).trim();
+
       const badge = card.querySelector('.qru-badge');
       if (badge) {
         badge.className   = `qru-badge ${status}`;
         badge.textContent = status==='vazio' ? 'Vazio'
           : `${orientadores.length} pessoa${orientadores.length!==1?'s':''}`;
       }
+
       const chipsDiv = card.querySelector('.orientadores-chips');
       if (chipsDiv) {
-        // Fechar o painel de expansão antes de reconstruir os chips
         const oldPanel = card.querySelector('.chip-expand-panel');
         if (oldPanel) { oldPanel.classList.add('hidden'); oldPanel.innerHTML = ''; oldPanel.dataset.rId = ''; }
+
+        // Mesma renderização de _qruCardHTML — inclui faltou, accordion, cargo correto
         chipsDiv.innerHTML = orientadores.map(([rId,ori]) => {
           const nome        = ori.nome || rId;
           const nomeDisplay = nome.split(' ')
             .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-          const cargo = (ori.cargo||'ORI').slice(0,3).toUpperCase();
-          return `<div class="orientador-chip">
-            <div class="chip-avatar" style="background:${avatarColor(nome)}">${avatarInitials(nome)}</div>
+          const cargo = (CFG.CARGO_ABBR[ori.cargo?.toUpperCase()] || ori.cargo?.slice(0,3)?.toUpperCase() || 'ORI');
+          return `<div class="orientador-chip ${ori.faltou?'chip-falta':''}"
+            onclick="NIT_PLANOP.UI.toggleChipExpand('${postoId}','${rId}',event)"
+            style="cursor:pointer">
+            <div class="chip-avatar" style="background:${ori.faltou ? 'var(--danger)' : avatarColor(nome)}">${avatarInitials(nome)}</div>
             <span class="chip-nome">${esc(nomeDisplay)}</span>
-            <span class="chip-cargo">${esc(cargo)}</span>
+            ${ori.faltou
+              ? `<span class="chip-cargo chip-cargo-falta">FALTOU</span>`
+              : `<span class="chip-cargo">${esc(cargo)}</span>`}
             ${canWrite() ? `<button class="orientador-chip-remove"
-              onclick="NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')"
+              onclick="event.stopPropagation();NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')"
               title="Remover">×</button>` : ''}
           </div>`;
         }).join('');
