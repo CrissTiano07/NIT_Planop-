@@ -134,7 +134,8 @@ URL: `crisstiano07.github.io/NIT_Planop/`
 
 ---
 
-## 📁 Estrutura Firebase (`/efetivo/*`)
+## 📁 Estrutura Firebase (`/efetivo/*`) 
+
 
 ```
 efetivo/
