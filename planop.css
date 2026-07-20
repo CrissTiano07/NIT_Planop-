@@ -1788,3 +1788,15 @@ input:focus {
   color: var(--text-secondary); margin-bottom: 6px;
   letter-spacing: 0.02em;
 }
+
+.foto-zoom-hint {
+  position: absolute; bottom: 20px;
+  left: 50%; transform: translateX(-50%);
+  font-size: 11px; color: rgba(255,255,255,0.5);
+  pointer-events: none;
+}
+.foto-zoom-hint kbd {
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px; padding: 1px 5px;
+  font-family: var(--font-mono); font-size: 10px;
+}
