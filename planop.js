@@ -285,13 +285,29 @@ const NIT_PLANOP = (() => {
 
     login() {
       const prov = new firebase.auth.GoogleAuthProvider();
-      // signInWithRedirect evita o erro COOP que bloqueia window.closed
-      // na abordagem de popup. O usuário é redirecionado para o Google
-      // e retorna ao app após autenticação — sem janela popup.
-      firebase.auth().signInWithRedirect(prov).catch(e => {
-        console.error('[Auth.login]', e);
-        toast('Erro ao entrar. Tente novamente.', 'danger');
-      });
+      // Detecta aba anônima/incógnito: Chrome 120+ bloqueia cookies de terceiros
+      // em incógnito, o que quebra signInWithRedirect (estado não sobrevive ao redirect).
+      // Fallback: popup em incógnito (o erro COOP do popup não ocorre em incógnito).
+      const isIncognito = () => {
+        try {
+          localStorage.setItem('__test__', '1');
+          localStorage.removeItem('__test__');
+          return false;
+        } catch {
+          return true; // localStorage bloqueado = provável incógnito
+        }
+      };
+      if (isIncognito()) {
+        firebase.auth().signInWithPopup(prov).catch(e => {
+          console.error('[Auth.login popup]', e);
+          toast('Erro ao entrar. Em aba anônima, verifique se popups estão permitidos.', 'warning');
+        });
+      } else {
+        firebase.auth().signInWithRedirect(prov).catch(e => {
+          console.error('[Auth.login redirect]', e);
+          toast('Erro ao entrar. Tente novamente.', 'danger');
+        });
+      }
     },
 
     logout() {
@@ -2690,7 +2706,11 @@ const NIT_PLANOP = (() => {
     },
 
     async setStatusPessoa(rId, status, motivo = '') {
-      document.querySelectorAll('.status-popover').forEach(p => p.remove());
+      // Fechar expansão inline antes de re-renderizar (evita confusão visual)
+      const expEl = document.getElementById(`exp-${rId}`);
+      if (expEl) { expEl.classList.add('hidden'); }
+      document.getElementById(`wrap-${rId}`)?.classList.remove('ativo');
+
       const updates = { status, updatedAt: Date.now() };
       if (status === 'indisponivel') {
         updates.motivoIndisponivel = motivo;
