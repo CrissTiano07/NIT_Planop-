@@ -1117,28 +1117,27 @@ const NIT_PLANOP = (() => {
 
       const chipsHTML = orientadores.map(([rId,ori]) => {
         const nome = ori.nome || rId;
-        // Title case para exibição — o banco pode ter ALL CAPS por legado
         const nomeDisplay = nome.split(' ')
           .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
           .join(' ');
         const cargo = (CFG.CARGO_ABBR[ori.cargo?.toUpperCase()] || ori.cargo?.slice(0,3)?.toUpperCase() || 'ORI');
-        const cor   = avatarColor(nome);
-        const ini   = avatarInitials(nome);
-        return `<div class="orientador-chip ${ori.faltou?'chip-falta':''}">
-          <div class="chip-avatar" style="background:${ori.faltou ? 'var(--danger)' : avatarColor(nome)}">${ini}</div>
+        const r = S.recursos[rId] || {};
+        return `<div class="orientador-chip ${ori.faltou?'chip-falta':''}"
+          onclick="NIT_PLANOP.UI.toggleChipExpand('${postoId}','${rId}',event)"
+          style="cursor:pointer" title="Clique para ver detalhes">
+          <div class="chip-avatar" style="background:${ori.faltou ? 'var(--danger)' : avatarColor(nome)}">${avatarInitials(nome)}</div>
           <span class="chip-nome">${esc(nomeDisplay)}</span>
           ${ori.faltou
             ? `<span class="chip-cargo chip-cargo-falta">FALTOU</span>`
             : `<span class="chip-cargo">${esc(cargo)}</span>`}
-          ${canWrite() ? `
-            <button class="chip-falta-btn${ori.faltou?' ativo':''}"
-              onclick="NIT_PLANOP.Actions.toggleFalta('${postoId}','${rId}')"
-              title="${ori.faltou?'Cancelar falta':'Registrar falta'}">⚠</button>
-            <button class="orientador-chip-remove"
-              onclick="NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')"
-              title="Remover">×</button>` : ''}
+          ${canWrite() ? `<button class="orientador-chip-remove"
+            onclick="event.stopPropagation();NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')"
+            title="Remover">×</button>` : ''}
         </div>`;
       }).join('');
+
+      // Painel de expansão — aparece abaixo do grupo de chips ao clicar em um
+      const chipExpandHTML = `<div class="chip-expand-panel hidden" id="chip-exp-${postoId}"></div>`;
 
       const addBtn = canWrite()
         ? `<div class="add-orientador-wrap">
@@ -1177,6 +1176,7 @@ const NIT_PLANOP = (() => {
         <div class="qru-body">
           <div class="orientadores-label">Orientadores designados</div>
           <div class="orientadores-chips">${chipsHTML}</div>
+          ${chipExpandHTML}
           ${addBtn}
           <button class="detalhes-toggle"
             onclick="NIT_PLANOP.UI.toggleDetalhes('${postoId}')">
@@ -1874,6 +1874,56 @@ const NIT_PLANOP = (() => {
     },
 
     // Expansão inline da linha de staff — substitui o popover flutuante
+    toggleChipExpand(postoId, rId, event) {
+      event.stopPropagation();
+      const panel = document.getElementById(`chip-exp-${postoId}`);
+      if (!panel) return;
+
+      // Desmarcar chip anterior neste posto
+      const wrap = document.getElementById(`qru-${postoId}`);
+      wrap?.querySelectorAll('.orientador-chip.chip-sel').forEach(c => c.classList.remove('chip-sel'));
+
+      // Toggle: fechar se já estava aberto para este recurso
+      if (panel.dataset.rId === rId && !panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        panel.dataset.rId = '';
+        return;
+      }
+
+      // Marcar chip ativo
+      event.currentTarget?.classList.add('chip-sel');
+      panel.dataset.rId = rId;
+
+      const ori = S.postos[postoId]?.orientadores?.[rId] || {};
+      const r   = S.recursos[rId] || {};
+      const nome = titleCase(ori.nome || r.nome || rId);
+      const tel  = r.contato ? `<a href="tel:${r.contato}" class="sp-contato" onclick="event.stopPropagation()">${esc(r.contato)}</a>` : '<span class="exp-vazio">—</span>';
+      const bairro = r.bairro ? esc(titleCase(r.bairro)) : '<span class="exp-vazio">—</span>';
+
+      panel.innerHTML = `
+        <div class="chip-exp-nome">${esc(nome)}</div>
+        <div class="exp-dados">
+          <div class="exp-dado"><span class="exp-label">Contato</span>${tel}</div>
+          <div class="exp-dado"><span class="exp-label">Bairro</span>${bairro}</div>
+        </div>
+        <div class="exp-acoes">
+          <button class="exp-btn ${ori.faltou?'exp-btn-active':''}"
+            onclick="NIT_PLANOP.Actions.toggleFalta('${postoId}','${rId}');NIT_PLANOP.UI.toggleChipExpand('${postoId}','','{skip}')">
+            ⚠ ${ori.faltou ? 'Cancelar falta' : 'Registrar falta'}
+          </button>
+          <button class="exp-btn exp-btn-warning"
+            onclick="NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')">
+            × Remover do posto
+          </button>
+          <button class="exp-btn exp-btn-edit"
+            onclick="NIT_PLANOP.UI.abrirEditarPessoa('${rId}')">
+            ✏ Editar
+          </button>
+        </div>`;
+
+      panel.classList.remove('hidden');
+    },
+
     toggleStaffExpand(rId) {
       const exp  = document.getElementById(`exp-${rId}`);
       if (!exp) return;
