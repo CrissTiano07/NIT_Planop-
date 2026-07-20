@@ -1566,3 +1566,69 @@ input:focus {
   width: 100%; text-align: left;
   border-top: 1px solid var(--border);
 }
+
+/* Textarea de observação */
+.textarea-obs {
+  resize: vertical; min-height: 52px;
+  font-family: var(--font-ui); font-size: 12px;
+  line-height: 1.5;
+}
+.detalhes-obs-input.textarea-obs {
+  width: 100%; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text-primary); padding: 6px 8px;
+}
+
+/* Fix: pf-ori chips no form de posto */
+.pf-ori-chips {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px;
+}
+.pf-ori-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px 3px 4px;
+  background: var(--accent-dim); border: 1px solid var(--accent);
+  border-radius: 20px; font-size: 11px;
+}
+
+/* Fix 4: chip com falta */
+.orientador-chip.chip-falta {
+  opacity: 0.6;
+  border-color: var(--danger);
+  background: var(--danger-dim);
+}
+.chip-falta-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; color: var(--warning); padding: 0 2px;
+  opacity: 0.7; transition: opacity var(--dur-fast);
+}
+.chip-falta-btn:hover { opacity: 1; }
+.chip-falta-btn.ativo { color: var(--text-muted); }
+
+/* Fix 2: foto placeholder com hint de paste */
+.foto-hint {
+  font-size: 9px; color: var(--text-muted);
+  display: block; margin-top: 2px;
+}
+.foto-placeholder { cursor: pointer; }
+.foto-placeholder:focus { outline: 2px solid var(--accent); }
+
+/* Fix 2: foto clicável */
+.foto-ref, .foto-registro {
+  cursor: zoom-in;
+  transition: opacity var(--dur-fast);
+}
+.foto-ref:hover, .foto-registro:hover { opacity: 0.85; }
+
+/* Fix 3: lightbox */
+.foto-zoom-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 900; cursor: zoom-out;
+  animation: fadeIn var(--dur-fast);
+}
+.foto-zoom-img {
+  max-width: 90vw; max-height: 90vh;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 60px rgba(0,0,0,0.8);
+}
