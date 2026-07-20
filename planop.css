@@ -1596,9 +1596,20 @@ input:focus {
 
 /* Fix 4: chip com falta */
 .orientador-chip.chip-falta {
-  opacity: 0.6;
+  opacity: 0.75;
   border-color: var(--danger);
-  background: var(--danger-dim);
+  background: rgba(239,68,68,0.08);
+}
+.orientador-chip.chip-falta .chip-nome {
+  color: var(--danger);
+  text-decoration: line-through;
+  text-decoration-color: rgba(239,68,68,0.5);
+}
+.chip-cargo-falta {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+  color: var(--danger); text-transform: uppercase;
+  padding: 1px 4px; border-radius: 3px;
+  background: var(--danger-dim); border: 1px solid var(--danger);
 }
 .chip-falta-btn {
   background: none; border: none; cursor: pointer;
