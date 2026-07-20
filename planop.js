@@ -1278,13 +1278,18 @@ const NIT_PLANOP = (() => {
       const reader = new FileReader();
       reader.onload = async ev => {
         const compressed = await UI._compressImage(ev.target.result, 900, 0.72);
+        S._suppressRender = true;
+        setTimeout(() => { S._suppressRender = false; }, 800);
         if (tipo === 'ref') {
+          if (S.postos[postoId]) S.postos[postoId].fotoReferencia = compressed;
           await S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).set(compressed);
+          UI._patchFotos(postoId);
           toast('Foto de referência adicionada!', 'success');
         } else {
           await S.db.ref(`efetivo/postos/${postoId}/fotosRegistro`).push({
             data: compressed, timestamp: getHoraAtual()
           });
+          UI._patchFotos(postoId);
           toast('Registro adicionado!', 'success');
         }
       };
@@ -1315,14 +1320,18 @@ const NIT_PLANOP = (() => {
         const reader = new FileReader();
         reader.onload = async ev => {
           const compressed = await UI._compressImage(ev.target.result, 900, 0.72);
+          S._suppressRender = true;
+          setTimeout(() => { S._suppressRender = false; }, 800);
           if (tipo === 'ref') {
-            S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).set(compressed);
+            if (S.postos[postoId]) S.postos[postoId].fotoReferencia = compressed;
+            await S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).set(compressed);
+            UI._patchFotos(postoId);
             toast('Foto de referência colada!', 'success');
           } else {
-            const ts = getHoraAtual();
-            S.db.ref(`efetivo/postos/${postoId}/fotosRegistro`).push({
-              data: compressed, timestamp: ts
+            await S.db.ref(`efetivo/postos/${postoId}/fotosRegistro`).push({
+              data: compressed, timestamp: getHoraAtual()
             });
+            UI._patchFotos(postoId);
             toast('Registro fotográfico colado!', 'success');
           }
         };
@@ -1799,6 +1808,18 @@ const NIT_PLANOP = (() => {
           </div>`;
         }).join('');
       }
+    },
+
+    // Atualiza só a seção de fotos dentro do card — sem reconstruir o card inteiro.
+    // Preserva: estado expanded, detalhes abertos, dropdowns abertos.
+    _patchFotos(postoId) {
+      const posto = S.postos[postoId];
+      if (!posto) return;
+      const secao = document.querySelector(`#qru-${postoId} .fotos-section`);
+      if (!secao) return;
+      const novaSecao = document.createElement('div');
+      novaSecao.innerHTML = UI._fotosHTML(postoId, posto);
+      secao.replaceWith(novaSecao.firstElementChild);
     },
 
     dragStartStaff(event, rId) {
@@ -2609,13 +2630,22 @@ const NIT_PLANOP = (() => {
     },
 
     async removerFotoRef(postoId) {
-      await S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).remove();
+      S._suppressRender = true;
+      setTimeout(() => { S._suppressRender = false; }, 800);
       if (S.postos[postoId]) S.postos[postoId].fotoReferencia = null;
+      await S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).remove();
+      UI._patchFotos(postoId);
       toast('Foto removida', 'info');
     },
 
     async removerFotoRegistro(postoId, regId) {
+      S._suppressRender = true;
+      setTimeout(() => { S._suppressRender = false; }, 800);
+      if (S.postos[postoId]?.fotosRegistro) {
+        delete S.postos[postoId].fotosRegistro[regId];
+      }
       await S.db.ref(`efetivo/postos/${postoId}/fotosRegistro/${regId}`).remove();
+      UI._patchFotos(postoId);
       toast('Registro removido', 'info');
     },
 
@@ -2880,8 +2910,13 @@ const NIT_PLANOP = (() => {
     const reader = new FileReader();
     reader.onload = async ev => {
       const compressed = await UI._compressImage(ev.target.result, 900, 0.72);
+      // Suppress: evita que o listener reconstrua o card e colapsa os detalhes
+      S._suppressRender = true;
+      setTimeout(() => { S._suppressRender = false; }, 800);
+      if (S.postos[alvo]) S.postos[alvo].fotoReferencia = compressed;
       await S.db.ref(`efetivo/postos/${alvo}/fotoReferencia`).set(compressed);
-      toast('Print colado como foto de referência!', 'success');
+      UI._patchFotos(alvo); // atualiza só a seção de fotos
+      toast('Print colado!', 'success');
     };
     reader.readAsDataURL(file);
 
