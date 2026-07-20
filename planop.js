@@ -1576,20 +1576,66 @@ const NIT_PLANOP = (() => {
             : '';
         const subLine  = posto ? `${cargo} → [${posto.numero||'?'}]` : (motivo || cargo);
         const hasMotivo = !!motivo;
-        return `<div class="staff-row ${r.status}"
-          ${canDrag ? 'draggable="true"' : ''}
-          ${canDrag ? `ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"` : ''}
-          ${canDrag ? `ondragend="NIT_PLANOP.UI.dragEndStaff(event)"` : ''}
-          ${canWrite() && canClick ? `onclick="NIT_PLANOP.UI.abrirStatusPessoa(event,'${rId}')"` : ''}>
-          ${canDrag ? `<span class="staff-drag-handle" aria-hidden="true" onclick="event.stopPropagation()">⠿</span>` : '<span class="staff-drag-placeholder"></span>'}
-          <div class="staff-avatar" style="background:${avatarColor(r.nome)}" aria-hidden="true">
-            ${avatarInitials(r.nome)}
+
+        // Painel de expansão inline com dados + ações de status
+        const tel    = r.contato ? `<a href="tel:${r.contato}" class="sp-contato" onclick="event.stopPropagation()">${esc(r.contato)}</a>` : '<span class="exp-vazio">—</span>';
+        const bairro = r.bairro ? esc(titleCase(r.bairro)) : '<span class="exp-vazio">—</span>';
+        const transp = r.transporte === 'veiculo_proprio' ? 'Veículo próprio'
+                     : r.transporte === 'transporte_publico' ? 'Transporte público'
+                     : '<span class="exp-vazio">—</span>';
+
+        const acoes = posto
+          ? `<button class="exp-btn exp-btn-warning"
+               onclick="NIT_PLANOP.Actions.liberarDoPosto('${rId}','${posto.pid||Object.entries(S.postos).find(([,p])=>p.orientadores?.[rId])?.[0]}')">
+               ↩ Liberar do posto
+             </button>`
+          : `<button class="exp-btn ${r.status==='disponivel'?'exp-btn-active':''}"
+               onclick="NIT_PLANOP.Actions.setStatusPessoa('${rId}','disponivel')">
+               ● Disponível
+             </button>
+             <button class="exp-btn ${r.status==='indisponivel'?'exp-btn-active':''}"
+               onclick="NIT_PLANOP.UI.toggleExpMotivos('${rId}')">
+               ● Indisponível ▸
+             </button>
+             <div class="exp-motivos hidden" id="exp-mot-${rId}">
+               ${CFG.MOTIVOS.map(m => `
+                 <button class="exp-motivo-btn ${r.motivoIndisponivel===m.value?'active':''}"
+                   onclick="NIT_PLANOP.Actions.setStatusPessoa('${rId}','indisponivel','${m.value}')">
+                   ${esc(m.label)}
+                 </button>`).join('')}
+             </div>`;
+
+        return `<div class="staff-row-wrap" id="wrap-${rId}">
+          <div class="staff-row ${r.status}"
+            ${canDrag ? 'draggable="true"' : ''}
+            ${canDrag ? `ondragstart="NIT_PLANOP.UI.dragStartStaff(event,'${rId}')"` : ''}
+            ${canDrag ? `ondragend="NIT_PLANOP.UI.dragEndStaff(event)"` : ''}
+            ${canWrite() && canClick ? `onclick="NIT_PLANOP.UI.toggleStaffExpand('${rId}')"` : ''}>
+            ${canDrag ? `<span class="staff-drag-handle" aria-hidden="true" onclick="event.stopPropagation()">⠿</span>` : '<span class="staff-drag-placeholder"></span>'}
+            <div class="staff-avatar" style="background:${avatarColor(r.nome)}" aria-hidden="true">
+              ${avatarInitials(r.nome)}
+            </div>
+            <div class="staff-info">
+              <div class="staff-nome">${esc(titleCase(r.nome||rId))}</div>
+              <div class="staff-sub-line${hasMotivo?' has-motivo':''}">${esc(subLine)}</div>
+            </div>
+            <span class="staff-dot ${r.status}"></span>
           </div>
-          <div class="staff-info">
-            <div class="staff-nome">${esc(titleCase(r.nome||rId))}</div>
-            <div class="staff-sub-line${hasMotivo?' has-motivo':''}">${esc(subLine)}</div>
-          </div>
-          <span class="staff-dot ${r.status}"></span>
+          ${canWrite() && canClick ? `
+          <div class="staff-expand hidden" id="exp-${rId}">
+            <div class="exp-dados">
+              <div class="exp-dado"><span class="exp-label">Contato</span>${tel}</div>
+              <div class="exp-dado"><span class="exp-label">Bairro</span>${bairro}</div>
+              <div class="exp-dado"><span class="exp-label">Transporte</span>${transp}</div>
+            </div>
+            <div class="exp-acoes">
+              ${acoes}
+              <button class="exp-btn exp-btn-edit"
+                onclick="NIT_PLANOP.UI.abrirEditarPessoa('${rId}')">
+                ✏ Editar
+              </button>
+            </div>
+          </div>` : ''}
         </div>`;
       };
 
@@ -1825,6 +1871,28 @@ const NIT_PLANOP = (() => {
       const novaSecao = document.createElement('div');
       novaSecao.innerHTML = UI._fotosHTML(postoId, posto);
       secao.replaceWith(novaSecao.firstElementChild);
+    },
+
+    // Expansão inline da linha de staff — substitui o popover flutuante
+    toggleStaffExpand(rId) {
+      const exp  = document.getElementById(`exp-${rId}`);
+      if (!exp) return;
+      const aberto = !exp.classList.contains('hidden');
+
+      // Fechar qualquer outra linha expandida
+      document.querySelectorAll('.staff-expand:not(.hidden)').forEach(el => {
+        if (el.id !== `exp-${rId}`) el.classList.add('hidden');
+      });
+      document.querySelectorAll('.staff-row-wrap.ativo').forEach(el => {
+        if (el.id !== `wrap-${rId}`) el.classList.remove('ativo');
+      });
+
+      exp.classList.toggle('hidden', aberto);
+      document.getElementById(`wrap-${rId}`)?.classList.toggle('ativo', !aberto);
+    },
+
+    toggleExpMotivos(rId) {
+      document.getElementById(`exp-mot-${rId}`)?.classList.toggle('hidden');
     },
 
     dragStartStaff(event, rId) {
