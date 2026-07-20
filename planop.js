@@ -132,6 +132,19 @@ const NIT_PLANOP = (() => {
   // Title case para exibição — preposições e conjunções em minúsculo.
   // Aplicado na camada de display, não no banco — dados permanecem
   // em MAIÚSCULO para consistência com o relatório mensal da AMC.
+  // Auto-grow para textareas de observação
+  const _autoGrow = el => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  };
+  const _bindAutoGrow = selector => {
+    document.querySelectorAll(selector).forEach(el => {
+      el.addEventListener('input', () => _autoGrow(el));
+      _autoGrow(el); // ajustar ao abrir se já tem conteúdo
+    });
+  };
+
   const PREP = new Set(['de','do','da','dos','das','e','a','o','em',
                         'no','na','nos','nas','por','para','com','x']);
   const titleCase = str => String(str||'').toLowerCase()
@@ -786,6 +799,9 @@ const NIT_PLANOP = (() => {
         qrusLista.insertAdjacentHTML('beforeend', formHTML);
       }
 
+      // Ativar auto-grow nas textareas do form
+      _bindAutoGrow('#cadastrar-pessoa-form .textarea-obs, .posto-form-inline .textarea-obs');
+
       // Montar combos com teclado
       UI._combo('pf-bairro-input', 'pf-bairro-list',
         CFG.BAIRROS.map(b => ({ value: b, label: b })),
@@ -1192,20 +1208,34 @@ const NIT_PLANOP = (() => {
         <div class="fotos-grid">
           <div class="foto-ref-wrap">
             ${fRef
-              ? `<img class="foto-ref" src="${fRef}" alt="Foto de referência"
-                   onclick="NIT_PLANOP.UI._fotoZoom(this)"
-                   title="Clique para ampliar">`
+              ? `<div class="foto-ref-container">
+                  <img class="foto-ref" src="${fRef}" alt="Foto de referência"
+                    onclick="NIT_PLANOP.UI._fotoZoom(this)"
+                    title="Clique para ampliar">
+                  ${canWrite() ? `
+                  <div class="foto-ref-actions">
+                    <button class="foto-action-btn"
+                      onclick="NIT_PLANOP.UI.addFotoRef('${postoId}')"
+                      title="Substituir foto">↺</button>
+                    <button class="foto-action-btn danger"
+                      onclick="NIT_PLANOP.Actions.removerFotoRef('${postoId}')"
+                      title="Remover foto">×</button>
+                  </div>` : ''}
+                </div>`
               : `<div class="foto-placeholder"
                    onclick="NIT_PLANOP.UI.addFotoRef('${postoId}')"
                    onpaste="NIT_PLANOP.UI.colarFoto(event,'${postoId}','ref')"
+                   ondragover="event.preventDefault();this.classList.add('drag-over')"
+                   ondragleave="this.classList.remove('drag-over')"
+                   ondrop="NIT_PLANOP.UI.soltarFoto(event,'${postoId}','ref');this.classList.remove('drag-over')"
                    tabindex="0"
-                   title="Clique para buscar arquivo · Ctrl+V para colar">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                   title="Clique · Ctrl+V · ou arraste a imagem aqui">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
                     <circle cx="12" cy="13" r="4"/>
                   </svg>
                   <span>Foto de referência</span>
-                  <span class="foto-hint">Clique ou Ctrl+V</span>
+                  <span class="foto-hint">Clique · Ctrl+V · Arraste</span>
                 </div>`}
             <div class="foto-label-sub">Referência</div>
           </div>
@@ -1216,12 +1246,19 @@ const NIT_PLANOP = (() => {
                   onclick="NIT_PLANOP.UI._fotoZoom(this)"
                   title="Clique para ampliar">
                 <span class="foto-ts">${r.timestamp||''}</span>
+                ${canWrite() ? `<button class="foto-reg-del"
+                  onclick="NIT_PLANOP.Actions.removerFotoRegistro('${postoId}','${rid}')"
+                  title="Remover">×</button>` : ''}
               </div>`).join('')}
             ${canWrite() ? `
-              <button class="btn-add-registro"
-                onclick="NIT_PLANOP.UI.addFotoRegistro('${postoId}')"
-                onpaste="NIT_PLANOP.UI.colarFoto(event,'${postoId}','registro')"
-                title="Adicionar registro · Ctrl+V para colar">+</button>` : ''}
+              <div class="btn-add-registro-wrap"
+                ondragover="event.preventDefault();this.classList.add('drag-over')"
+                ondragleave="this.classList.remove('drag-over')"
+                ondrop="NIT_PLANOP.UI.soltarFoto(event,'${postoId}','registro');this.classList.remove('drag-over')">
+                <button class="btn-add-registro"
+                  onclick="NIT_PLANOP.UI.addFotoRegistro('${postoId}')"
+                  title="Adicionar · Ctrl+V · Arraste">+</button>
+              </div>` : ''}
           </div>
         </div>
       </div>`;
@@ -1233,7 +1270,28 @@ const NIT_PLANOP = (() => {
       // Mais simples: passar a img clicada diretamente via event
     },
 
-    // Fix 3 (versão correta com event target)
+    // Drag & drop de imagem para a área de foto
+    soltarFoto(event, postoId, tipo) {
+      event.preventDefault();
+      const file = [...(event.dataTransfer?.files||[])].find(f => f.type.startsWith('image/'));
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        const compressed = await UI._compressImage(ev.target.result, 900, 0.72);
+        if (tipo === 'ref') {
+          await S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).set(compressed);
+          toast('Foto de referência adicionada!', 'success');
+        } else {
+          await S.db.ref(`efetivo/postos/${postoId}/fotosRegistro`).push({
+            data: compressed, timestamp: getHoraAtual()
+          });
+          toast('Registro adicionado!', 'success');
+        }
+      };
+      reader.readAsDataURL(file);
+    },
+
+    // Lightbox: ampliar foto ao clicar
     _fotoZoom(imgEl) {
       document.getElementById('foto-zoom-overlay')?.remove();
       const src = imgEl?.src;
@@ -2550,6 +2608,17 @@ const NIT_PLANOP = (() => {
       toast('Horários atualizados!', 'success');
     },
 
+    async removerFotoRef(postoId) {
+      await S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).remove();
+      if (S.postos[postoId]) S.postos[postoId].fotoReferencia = null;
+      toast('Foto removida', 'info');
+    },
+
+    async removerFotoRegistro(postoId, regId) {
+      await S.db.ref(`efetivo/postos/${postoId}/fotosRegistro/${regId}`).remove();
+      toast('Registro removido', 'info');
+    },
+
     async toggleFalta(postoId, rId) {
       const ori = S.postos[postoId]?.orientadores?.[rId];
       if (!ori) return;
@@ -2779,6 +2848,53 @@ const NIT_PLANOP = (() => {
   const canAdmin  = () => S.role === 'admin';
 
   /* ── FECHAR DROPDOWN AO CLICAR FORA ─────────────────────── */
+  // Auto-grow global para qualquer textarea.textarea-obs inserida dinamicamente
+  document.addEventListener('input', e => {
+    if (e.target.classList.contains('textarea-obs')) _autoGrow(e.target);
+  });
+
+  // Paste global — captura prints colados em qualquer lugar da página.
+  // Prioridade: foto de referência do posto com detalhes abertos.
+  // 99% do uso é Ctrl+V após tirar print — não deve exigir clicar no placeholder.
+  document.addEventListener('paste', e => {
+    // Ignorar se o foco está num input/textarea (o usuário está digitando algo)
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    const imgItem = [...(e.clipboardData?.items||[])].find(i => i.type.startsWith('image/'));
+    if (!imgItem) return;
+
+    // Encontrar postos com detalhes expandidos
+    const abertos = [...document.querySelectorAll('.detalhes-body.open, .detalhes-body[style*="block"]')]
+      .map(el => el.closest('.qru-card')?.id?.replace('qru-',''))
+      .filter(Boolean);
+
+    // Preferir posto sem foto de referência
+    const semFoto = abertos.find(pid => !S.postos[pid]?.fotoReferencia);
+    const alvo    = semFoto || abertos[0];
+
+    if (!alvo) return; // nenhum posto aberto — deixar o comportamento padrão
+
+    e.preventDefault();
+    const file   = imgItem.getAsFile();
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      const compressed = await UI._compressImage(ev.target.result, 900, 0.72);
+      await S.db.ref(`efetivo/postos/${alvo}/fotoReferencia`).set(compressed);
+      toast('Print colado como foto de referência!', 'success');
+    };
+    reader.readAsDataURL(file);
+
+    if (abertos.length > 1) {
+      toast(`Print colado no posto ${S.postos[alvo]?.numero||''}. Abra só um posto por vez para colar com precisão.`, 'info');
+    }
+  });
+  // Ativar nas que já existem ao abrir detalhes
+  document.addEventListener('click', e => {
+    const toggle = e.target.closest('.detalhes-toggle');
+    if (toggle) setTimeout(() => _bindAutoGrow('.detalhes-obs-input'), 50);
+  });
+
   document.addEventListener('click', () => {
     // Fechar settings menu
     const sm = $('settings-menu');
