@@ -599,6 +599,9 @@ const NIT_PLANOP = (() => {
       const ref = await S.db.ref('efetivo/postos').push(payload);
       // Update otimista
       S.postos[ref.key] = payload;
+      // Suppress: evita colapsar detalhes abertos de outros postos
+      S._suppressRender = true;
+      setTimeout(() => { S._suppressRender = false; }, 600);
       UI.renderMainContent();
       return ref.key;
     }
@@ -1122,9 +1125,11 @@ const NIT_PLANOP = (() => {
         const cor   = avatarColor(nome);
         const ini   = avatarInitials(nome);
         return `<div class="orientador-chip ${ori.faltou?'chip-falta':''}">
-          <div class="chip-avatar" style="background:${cor}">${ini}</div>
+          <div class="chip-avatar" style="background:${ori.faltou ? 'var(--danger)' : avatarColor(nome)}">${ini}</div>
           <span class="chip-nome">${esc(nomeDisplay)}</span>
-          <span class="chip-cargo">${esc(cargo)}</span>
+          ${ori.faltou
+            ? `<span class="chip-cargo chip-cargo-falta">FALTOU</span>`
+            : `<span class="chip-cargo">${esc(cargo)}</span>`}
           ${canWrite() ? `
             <button class="chip-falta-btn${ori.faltou?' ativo':''}"
               onclick="NIT_PLANOP.Actions.toggleFalta('${postoId}','${rId}')"
@@ -1853,6 +1858,7 @@ const NIT_PLANOP = (() => {
 
     dropOnQru(event, postoId) {
       event.preventDefault();
+      event.stopPropagation(); // Fix 2b: evita que o click no header colapsa o card
       const rId = event.dataTransfer.getData('text/plain');
       document.getElementById(`qru-${postoId}`)?.classList.remove('drag-over');
       if (!rId) return;
@@ -2895,8 +2901,9 @@ const NIT_PLANOP = (() => {
     if (!imgItem) return;
 
     // Encontrar postos com detalhes expandidos
-    const abertos = [...document.querySelectorAll('.detalhes-body.open, .detalhes-body[style*="block"]')]
-      .map(el => el.closest('.qru-card')?.id?.replace('qru-',''))
+    // Fix 1: seletor por ID — mais robusto que pela classe do elemento pai
+    const abertos = [...document.querySelectorAll('[id^="det-"].open')]
+      .map(el => el.id.replace('det-',''))
       .filter(Boolean);
 
     // Preferir posto sem foto de referência
