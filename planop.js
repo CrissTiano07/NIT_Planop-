@@ -1328,9 +1328,17 @@ const NIT_PLANOP = (() => {
       const ov = document.createElement('div');
       ov.id = 'foto-zoom-overlay';
       ov.className = 'foto-zoom-overlay';
-      ov.innerHTML = `<img src="${src}" class="foto-zoom-img" onclick="event.stopPropagation()">`;
+      ov.innerHTML = `
+        <img src="${src}" class="foto-zoom-img" onclick="event.stopPropagation()">
+        <span class="foto-zoom-hint">Clique fora ou <kbd>Esc</kbd> para fechar</span>`;
       ov.addEventListener('click', () => ov.remove());
       document.body.appendChild(ov);
+
+      // Fechar com Escape — padrão de mercado para lightbox/modal
+      const onKey = e => {
+        if (e.key === 'Escape') { ov.remove(); document.removeEventListener('keydown', onKey); }
+      };
+      document.addEventListener('keydown', onKey);
     },
 
     // Fix 2: colar foto da área de transferência
@@ -2634,6 +2642,8 @@ const NIT_PLANOP = (() => {
       const op      = S.operacoes[opId] || {};
       const oriSel  = window._pfOriSelecionados || {};
 
+      const btnPosto = document.querySelector('.posto-form-inline .btn-accent-sm');
+      if (btnPosto) { btnPosto.disabled = true; btnPosto.textContent = 'Criando...'; }
       const postoId = await DB.adicionarPosto({
         operacaoId: opId,
         local:    upper(local),
@@ -2905,6 +2915,8 @@ const NIT_PLANOP = (() => {
       const bairro = $('eop-bairro')?.value.trim();
       const horario = $('eop-horario')?.value;
       if (!nome) { toast('Nome é obrigatório', 'warning'); return; }
+      const btn = document.querySelector('#edit-op-form .btn-accent-sm');
+      if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
       await S.db.ref(`efetivo/operacoes/${opId}`).update({
         nome: upper(nome), bairro: upper(bairro||''), horario: horario||'',
         updatedAt: Date.now()
@@ -2918,6 +2930,8 @@ const NIT_PLANOP = (() => {
       const bairro = document.getElementById(`ep-bairro-${postoId}`)?.value.trim();
       const obs    = document.getElementById(`ep-obs-${postoId}`)?.value.trim();
       if (!local) { toast('Endereço é obrigatório', 'warning'); return; }
+      const btn = document.querySelector(`.edit-posto-form .btn-accent-sm`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
       await S.db.ref(`efetivo/postos/${postoId}`).update({
         local: upper(local), bairro: upper(bairro||''), obs: upper(obs||''),
         updatedAt: Date.now()
@@ -3099,6 +3113,43 @@ const NIT_PLANOP = (() => {
   document.addEventListener('click', e => {
     const toggle = e.target.closest('.detalhes-toggle');
     if (toggle) setTimeout(() => _bindAutoGrow('.detalhes-obs-input'), 50);
+  });
+
+  // Escape global — fecha qualquer sobreposição aberta (padrão de mercado)
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    // Settings menu
+    const sm = $('settings-menu');
+    if (sm && !sm.classList.contains('hidden')) {
+      sm.classList.add('hidden'); sm.innerHTML = ''; return;
+    }
+    // Menus de contexto
+    if (document.querySelector('.ops-ctx-menu:not(.hidden)')) {
+      document.querySelectorAll('.ops-ctx-menu').forEach(m => m.classList.add('hidden')); return;
+    }
+    // Accordeão de staff
+    const expAberto = document.querySelector('.staff-expand:not(.hidden)');
+    if (expAberto) {
+      expAberto.classList.add('hidden');
+      document.querySelectorAll('.staff-row-wrap.ativo').forEach(w => w.classList.remove('ativo')); return;
+    }
+    // Chip expand panel
+    const chipAberto = document.querySelector('.chip-expand-panel:not(.hidden)');
+    if (chipAberto) {
+      chipAberto.classList.add('hidden'); chipAberto.innerHTML = '';
+      document.querySelectorAll('.orientador-chip.chip-sel').forEach(c => c.classList.remove('chip-sel')); return;
+    }
+    // Overlays modais
+    ['encerrar-confirm-overlay','editar-turno-form','editar-pessoa-form','cadastrar-pessoa-form'].forEach(id => {
+      document.getElementById(id)?.remove();
+    });
+    // Inline confirms
+    document.querySelectorAll('.inline-confirm').forEach(el => el.remove());
+    // Drop aberto
+    if (S._dropAberto) {
+      document.getElementById(S._dropAberto)?.classList.remove('open');
+      S._dropAberto = null;
+    }
   });
 
   document.addEventListener('click', () => {
