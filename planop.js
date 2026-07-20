@@ -1421,7 +1421,7 @@ const NIT_PLANOP = (() => {
             <summary class="staff-group-label" style="list-style:none;cursor:pointer">
               Em posto <span>${escFilt.length}</span>
             </summary>
-            ${escFilt.map(e => rowHTML(e, { canDrag:false, canClick:false })).join('')}
+            ${escFilt.map(e => rowHTML(e, { canDrag:false, canClick:true })).join('')}
           </details>
         ` : ''}
         ${indAusFilt.length ? `
@@ -1672,14 +1672,43 @@ const NIT_PLANOP = (() => {
       const r   = S.recursos[rId];
       if (!r) return;
 
+      // Posto atual (para escalados)
+      const postoByRecurso = {};
+      Object.entries(S.postos).forEach(([pid, p]) => {
+        Object.keys(p.orientadores||{}).forEach(id => { postoByRecurso[id] = { pid, posto: p }; });
+      });
+      const postoAtual = postoByRecurso[rId];
+
+      // Dados cadastrais (contato, bairro, transporte)
+      const tel       = r.contato  ? `<a href="tel:${r.contato}" class="sp-contato" onclick="event.stopPropagation()">${r.contato}</a>` : '<span class="sp-vazio">—</span>';
+      const bairro    = r.bairro   ? esc(titleCase(r.bairro))   : '<span class="sp-vazio">—</span>';
+      const transp    = r.transporte === 'veiculo_proprio'   ? 'Veículo próprio'
+                      : r.transporte === 'transporte_publico' ? 'Transporte público'
+                      : '<span class="sp-vazio">—</span>';
+
       const popHTML = `
         <div class="status-popover" id="sp-${rId}" onclick="event.stopPropagation()">
           <div class="sp-titulo">${esc(titleCase(r.nome||rId))}</div>
+
+          <!-- Dados cadastrais -->
+          <div class="sp-dados">
+            <div class="sp-dado"><span class="sp-dado-label">Contato</span>${tel}</div>
+            <div class="sp-dado"><span class="sp-dado-label">Bairro</span>${bairro}</div>
+            <div class="sp-dado"><span class="sp-dado-label">Transporte</span>${transp}</div>
+          </div>
+
+          <!-- Ações de status -->
+          <div class="sp-divider"></div>
           <div class="sp-opcoes">
+            ${postoAtual ? `
+            <button class="sp-opt warning"
+              onclick="NIT_PLANOP.Actions.liberarDoPosto('${rId}','${postoAtual.pid}')">
+              <span class="sp-dot disponivel"></span> Liberar do posto
+            </button>` : `
             <button class="sp-opt ${r.status==='disponivel'?'active':''}"
               onclick="NIT_PLANOP.Actions.setStatusPessoa('${rId}','disponivel')">
               <span class="sp-dot disponivel"></span> Disponível
-            </button>
+            </button>`}
             <button class="sp-opt ${r.status==='indisponivel'?'active':''}"
               onclick="NIT_PLANOP.UI.mostrarMotivos('${rId}')">
               <span class="sp-dot indisponivel"></span> Indisponível ▸
@@ -1701,9 +1730,7 @@ const NIT_PLANOP = (() => {
       const el = pop.firstElementChild;
       document.body.appendChild(el);
 
-      // Posicionar à esquerda da row, com clamp vertical —
-      // popover nunca sai da tela (altura estimada c/ motivos: 280px)
-      const POPOVER_H = 280;
+      const POPOVER_H = 320;
       const top = Math.min(r2.top, window.innerHeight - POPOVER_H - 12);
       el.style.position = 'fixed';
       el.style.top      = `${Math.max(12, top)}px`;
@@ -1815,13 +1842,14 @@ const NIT_PLANOP = (() => {
       const aberto = !form.classList.contains('hidden');
       form.classList.toggle('hidden', aberto);
       if (!aberto) {
-        // Limpar campos
+        // Limpar campos e resetar botão (pode ter ficado em "Criando...")
         [$('nop-bairro'), $('nop-nome')].forEach(el => { if(el) el.value=''; });
         const hidden = $('nop-tipo'); if (hidden) hidden.value = '';
         const tipoInp = $('nop-tipo-input'); if (tipoInp) tipoInp.value = '';
         const hor = $('nop-horario'); if(hor) hor.value='';
         const nome = $('nop-nome'); if(nome) nome._editado = false;
-        // Inicializar combos (bairro + tipo de missão) — padrão unificado
+        const btn = form.querySelector('.btn-accent-sm');
+        if (btn) { btn.disabled = false; btn.textContent = 'Criar Operação'; }
         UI._initBairroCombo();
         UI.popularSelectTipos();
         setTimeout(() => $('nop-bairro')?.focus(), 100);
@@ -2215,6 +2243,12 @@ const NIT_PLANOP = (() => {
       });
       UI.fecharNovaOp();
       toast('Operação criada!', 'success');
+    },
+
+    async liberarDoPosto(rId, postoId) {
+      document.querySelectorAll('.status-popover').forEach(p => p.remove());
+      await DB.removerOrientadorDoPosto(postoId, rId);
+      toast(`${titleCase(S.recursos[rId]?.nome||'')} liberado do posto`, 'success');
     },
 
     async setStatusPessoa(rId, status, motivo = '') {
