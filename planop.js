@@ -757,14 +757,17 @@ const NIT_PLANOP = (() => {
           <label class="form-label">Observação
             <span class="form-hint">opcional</span>
           </label>
-          <input id="pf-obs" type="text" class="input-sm" placeholder="">
+          <textarea id="pf-obs" class="input-sm textarea-obs"
+            placeholder="Ex: ciclofaixa, pista dupla, semáforo próximo..."
+            rows="2"></textarea>
 
-          <label class="form-label">Orientador / Equipe
-            <span class="badge badge-warn-sm">⚠ não designado</span>
+          <label class="form-label">Orientadores
+            <span class="badge badge-warn-sm">⚠ opcional</span>
           </label>
+          <div id="pf-ori-chips" class="pf-ori-chips"></div>
           <div class="combo-wrap">
             <input id="pf-orientador-input" type="text" class="input-sm"
-              placeholder="Opcional — designar depois é possível"
+              placeholder="Buscar e adicionar orientador..."
               autocomplete="off">
             <div id="pf-orientador-list" class="combo-drop"></div>
           </div>
@@ -797,12 +800,33 @@ const NIT_PLANOP = (() => {
         .sort(([,a],[,b]) => (a.nome||'').localeCompare(b.nome||'','pt-BR'))
         .map(([id,v]) => ({ value: `v:${id}`, label: `👥 ${v.nome||id}` }));
 
+      // Armazena lista de orientadores selecionados no form
+      window._pfOriSelecionados = {};
+
+      const _renderPfChips = () => {
+        const chipsDiv = $('pf-ori-chips');
+        if (!chipsDiv) return;
+        chipsDiv.innerHTML = Object.entries(window._pfOriSelecionados)
+          .map(([id, nome]) => `
+            <div class="pf-ori-chip">
+              <div class="chip-avatar" style="background:${avatarColor(nome)}">${avatarInitials(nome)}</div>
+              <span>${esc(titleCase(nome))}</span>
+              <button onclick="delete window._pfOriSelecionados['${id}'];NIT_PLANOP.UI._renderPfChips()" class="orientador-chip-remove">×</button>
+            </div>`).join('');
+      };
+      UI._renderPfChips = _renderPfChips;
+
       UI._combo('pf-orientador-input', 'pf-orientador-list',
         [...staffItems, ...equipeItems],
-        () => {} // só armazena no dataset do input
+        (value, label) => {
+          const nome = label.replace('👥 ','');
+          window._pfOriSelecionados[value] = nome;
+          const inp = $('pf-orientador-input');
+          if (inp) { inp.value = ''; inp.dataset.selectedValue = ''; }
+          _renderPfChips();
+        }
       );
 
-      // Foco automático no campo obrigatório
       setTimeout(() => $('pf-local')?.focus(), 80);
     },
 
@@ -827,7 +851,40 @@ const NIT_PLANOP = (() => {
       const e = S.escalas[S.escalaAtiva];
       hide('shift-idle'); show('shift-active');
       const lbl = $('shift-label-text');
-      if (lbl) lbl.textContent = `${turnoLabel(e)} · ${e.horarioInicio}–${e.horarioFim}`;
+      if (lbl) {
+        lbl.textContent = `${turnoLabel(e)} · ${e.horarioInicio}–${e.horarioFim}`;
+        if (canManage()) {
+          lbl.style.cursor = 'pointer';
+          lbl.title = 'Clique para editar horários do turno';
+          lbl.onclick = () => UI.abrirEditarTurno();
+        }
+      }
+    },
+
+    abrirEditarTurno() {
+      document.getElementById('editar-turno-form')?.remove();
+      const e = S.escalas[S.escalaAtiva];
+      if (!e) return;
+
+      const formHTML = `
+        <div id="editar-turno-form" class="encerrar-overlay"
+          onclick="if(event.target===this)this.remove()">
+          <div class="encerrar-dialog" onclick="event.stopPropagation()" style="min-width:280px">
+            <div class="posto-form-header">Editar horários do turno</div>
+            <label class="form-label">Início</label>
+            <input id="et-inicio" type="time" class="input-sm" value="${esc(e.horarioInicio||'')}">
+            <label class="form-label">Fim</label>
+            <input id="et-fim" type="time" class="input-sm" value="${esc(e.horarioFim||'')}">
+            <div class="encerrar-confirm-btns" style="margin-top:12px">
+              <button class="btn-ghost-sm"
+                onclick="document.getElementById('editar-turno-form')?.remove()">Cancelar</button>
+              <button class="btn-accent-sm"
+                onclick="NIT_PLANOP.Actions.salvarHorarioTurno()">Salvar</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', formHTML);
+      setTimeout(() => $('et-inicio')?.focus(), 60);
     },
 
     // ── SUPERVISÃO
@@ -1048,13 +1105,17 @@ const NIT_PLANOP = (() => {
         const cargo = (CFG.CARGO_ABBR[ori.cargo?.toUpperCase()] || ori.cargo?.slice(0,3)?.toUpperCase() || 'ORI');
         const cor   = avatarColor(nome);
         const ini   = avatarInitials(nome);
-        return `<div class="orientador-chip">
+        return `<div class="orientador-chip ${ori.faltou?'chip-falta':''}">
           <div class="chip-avatar" style="background:${cor}">${ini}</div>
           <span class="chip-nome">${esc(nomeDisplay)}</span>
           <span class="chip-cargo">${esc(cargo)}</span>
-          ${canWrite() ? `<button class="orientador-chip-remove"
-            onclick="NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')"
-            title="Remover">×</button>` : ''}
+          ${canWrite() ? `
+            <button class="chip-falta-btn${ori.faltou?' ativo':''}"
+              onclick="NIT_PLANOP.Actions.toggleFalta('${postoId}','${rId}')"
+              title="${ori.faltou?'Cancelar falta':'Registrar falta'}">⚠</button>
+            <button class="orientador-chip-remove"
+              onclick="NIT_PLANOP.Actions.removerOrientador('${postoId}','${rId}')"
+              title="Remover">×</button>` : ''}
         </div>`;
       }).join('');
 
@@ -1111,9 +1172,9 @@ const NIT_PLANOP = (() => {
             </div>
             <div class="detalhes-row" style="flex-direction:column;gap:4px">
               <span class="detalhes-key">Observação</span>
-              <input class="detalhes-obs-input" value="${esc(posto.obs||'')}"
+              <textarea class="detalhes-obs-input textarea-obs" rows="2"
                 placeholder="Adicionar observação..."
-                onblur="NIT_PLANOP.Actions.salvarObs('${postoId}',this.value)">
+                onblur="NIT_PLANOP.Actions.salvarObs('${postoId}',this.value)">${esc(posto.obs||'')}</textarea>
             </div>
             ${UI._fotosHTML(postoId, posto)}
           </div>
@@ -1124,34 +1185,92 @@ const NIT_PLANOP = (() => {
     _fotosHTML(postoId, posto) {
       const fRef = posto.fotoReferencia;
       const regs = posto.fotosRegistro || {};
-      const regsArr = Object.entries(regs).slice(0,3);
+      const regsArr = Object.entries(regs).slice(0,6);
 
       return `<div class="fotos-section">
         <div class="fotos-label">Fotos do posto</div>
         <div class="fotos-grid">
           <div class="foto-ref-wrap">
             ${fRef
-              ? `<img class="foto-ref" src="${fRef}" alt="Foto de referência">`
-              : `<div class="foto-placeholder" onclick="NIT_PLANOP.UI.addFotoRef('${postoId}')">
+              ? `<img class="foto-ref" src="${fRef}" alt="Foto de referência"
+                   onclick="NIT_PLANOP.UI._fotoZoom(this)"
+                   title="Clique para ampliar">`
+              : `<div class="foto-placeholder"
+                   onclick="NIT_PLANOP.UI.addFotoRef('${postoId}')"
+                   onpaste="NIT_PLANOP.UI.colarFoto(event,'${postoId}','ref')"
+                   tabindex="0"
+                   title="Clique para buscar arquivo · Ctrl+V para colar">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
                     <circle cx="12" cy="13" r="4"/>
                   </svg>
-                  Adicionar foto do local
+                  <span>Foto de referência</span>
+                  <span class="foto-hint">Clique ou Ctrl+V</span>
                 </div>`}
-            <div class="foto-label-sub">Foto de referência</div>
+            <div class="foto-label-sub">Referência</div>
           </div>
           <div class="fotos-registros">
             ${regsArr.map(([rid,r]) =>
               `<div class="foto-registro-wrap">
-                <img class="foto-registro" src="${r.data}" alt="Registro">
+                <img class="foto-registro" src="${r.data}" alt="Registro"
+                  onclick="NIT_PLANOP.UI._fotoZoom(this)"
+                  title="Clique para ampliar">
                 <span class="foto-ts">${r.timestamp||''}</span>
               </div>`).join('')}
-            ${canWrite() ? `<button class="btn-add-registro"
-              onclick="NIT_PLANOP.UI.addFotoRegistro('${postoId}')" title="Adicionar registro">+</button>` : ''}
+            ${canWrite() ? `
+              <button class="btn-add-registro"
+                onclick="NIT_PLANOP.UI.addFotoRegistro('${postoId}')"
+                onpaste="NIT_PLANOP.UI.colarFoto(event,'${postoId}','registro')"
+                title="Adicionar registro · Ctrl+V para colar">+</button>` : ''}
           </div>
         </div>
       </div>`;
+    },
+
+    // Fix 3: lightbox para ampliar foto
+    abrirFotoZoom(srcKey) {
+      // srcKey é uma chave — precisamos encontrar a foto correta no DOM
+      // Mais simples: passar a img clicada diretamente via event
+    },
+
+    // Fix 3 (versão correta com event target)
+    _fotoZoom(imgEl) {
+      document.getElementById('foto-zoom-overlay')?.remove();
+      const src = imgEl?.src;
+      if (!src) return;
+      const ov = document.createElement('div');
+      ov.id = 'foto-zoom-overlay';
+      ov.className = 'foto-zoom-overlay';
+      ov.innerHTML = `<img src="${src}" class="foto-zoom-img" onclick="event.stopPropagation()">`;
+      ov.addEventListener('click', () => ov.remove());
+      document.body.appendChild(ov);
+    },
+
+    // Fix 2: colar foto da área de transferência
+    colarFoto(event, postoId, tipo) {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (!item.type.startsWith('image/')) continue;
+        event.preventDefault();
+        const file   = item.getAsFile();
+        const reader = new FileReader();
+        reader.onload = async ev => {
+          const compressed = await UI._compressImage(ev.target.result, 900, 0.72);
+          if (tipo === 'ref') {
+            S.db.ref(`efetivo/postos/${postoId}/fotoReferencia`).set(compressed);
+            toast('Foto de referência colada!', 'success');
+          } else {
+            const ts = getHoraAtual();
+            S.db.ref(`efetivo/postos/${postoId}/fotosRegistro`).push({
+              data: compressed, timestamp: ts
+            });
+            toast('Registro fotográfico colado!', 'success');
+          }
+        };
+        reader.readAsDataURL(file);
+        break;
+      }
     },
 
     toggleQru(postoId) {
@@ -1571,7 +1690,8 @@ const NIT_PLANOP = (() => {
             <div id="ep-bairro-list-${postoId}" class="combo-drop"></div>
           </div>
           <label class="form-label">Observação <span class="form-hint">opcional</span></label>
-          <input id="ep-obs-${postoId}" type="text" class="input-sm" value="${esc(posto.obs||'')}">
+          <textarea id="ep-obs-${postoId}" class="input-sm textarea-obs"
+            rows="2">${esc(posto.obs||'')}</textarea>
           <div class="posto-form-footer">
             <button class="btn-ghost-sm"
               onclick="this.closest('.edit-posto-form')?.remove()">Cancelar</button>
@@ -2276,45 +2396,36 @@ const NIT_PLANOP = (() => {
       const local = $('pf-local')?.value.trim();
       if (!local) { toast('Endereço é obrigatório — sem isso ninguém sabe onde ir.', 'warning'); $('pf-local')?.focus(); return; }
 
-      const bairro   = $('pf-bairro-input')?.value.trim() || '';
-      const obs      = $('pf-obs')?.value.trim() || '';
-      const oriInput = $('pf-orientador-input');
-      const oriValue = oriInput?.dataset.selectedValue || '';
-      const op       = S.operacoes[opId] || {};
+      const bairro  = $('pf-bairro-input')?.value.trim() || '';
+      const obs     = $('pf-obs')?.value.trim() || '';
+      const op      = S.operacoes[opId] || {};
+      const oriSel  = window._pfOriSelecionados || {};
 
-      let alocacao = null;
-      if (oriValue) {
-        if (oriValue.startsWith('v:')) {
-          const id = oriValue.slice(2);
-          alocacao = { tipo:'equipe', id, nome: S.viaturas[id]?.nome||id };
-        } else {
-          const id = oriValue.slice(2);
-          alocacao = { tipo:'agente', id, nome: S.recursos[id]?.nome||id };
-        }
-      }
-
-      // DB.adicionarPosto retorna o ref.key do novo posto — único e correto.
-      // Não usar Object.keys(S.postos).pop() que é não-determinístico.
       const postoId = await DB.adicionarPosto({
         operacaoId: opId,
         local:    upper(local),
         bairro:   upper(bairro) || op.bairro || '',
         horario:  op.horario || '',
         tipoAcao: 'CONTROLE',
-        alocacao,
         obs:      upper(obs),
         qruPessoas: 1
       });
 
-      if (postoId && alocacao?.id && alocacao.tipo === 'agente') {
-        await DB.adicionarOrientadorAoPosto(postoId, alocacao.id);
-      } else if (postoId && alocacao?.id && alocacao.tipo === 'equipe') {
-        await S.db.ref(`efetivo/viaturas/${alocacao.id}/status`).set('escalada');
+      // Designar todos os orientadores selecionados
+      if (postoId) {
+        for (const [value, nome] of Object.entries(oriSel)) {
+          if (value.startsWith('a:')) {
+            await DB.adicionarOrientadorAoPosto(postoId, value.slice(2));
+          } else if (value.startsWith('v:')) {
+            await S.db.ref(`efetivo/viaturas/${value.slice(2)}/status`).set('escalada');
+          }
+        }
       }
 
+      window._pfOriSelecionados = {};
       UI.fecharAddPosto(opId);
       vibrar(40);
-      toast(alocacao ? 'Posto adicionado!' : 'Posto adicionado — designar orientador depois.', 'success');
+      toast(Object.keys(oriSel).length > 0 ? 'Posto adicionado!' : 'Posto adicionado — designar orientador depois.', 'success');
     },
 
     async criarOperacao() {
@@ -2426,6 +2537,32 @@ const NIT_PLANOP = (() => {
       document.getElementById('cadastrar-pessoa-form')?.remove();
       UI.renderRightPanel();
       toast(`${nome} cadastrado!`, 'success');
+    },
+
+    async salvarHorarioTurno() {
+      const inicio = $('et-inicio')?.value;
+      const fim    = $('et-fim')?.value;
+      if (!inicio || !fim) { toast('Preencha início e fim','warning'); return; }
+      await S.db.ref(`efetivo/escalas/${S.escalaAtiva}`).update({
+        horarioInicio: inicio, horarioFim: fim
+      });
+      document.getElementById('editar-turno-form')?.remove();
+      toast('Horários atualizados!', 'success');
+    },
+
+    async toggleFalta(postoId, rId) {
+      const ori = S.postos[postoId]?.orientadores?.[rId];
+      if (!ori) return;
+      const novoFaltou = !ori.faltou;
+      await S.db.ref(`efetivo/postos/${postoId}/orientadores/${rId}/faltou`).set(novoFaltou);
+      if (S.postos[postoId]?.orientadores?.[rId])
+        S.postos[postoId].orientadores[rId].faltou = novoFaltou;
+      S._suppressRender = true;
+      setTimeout(() => { S._suppressRender = false; }, 600);
+      UI._patchQruCard(postoId);
+      const nome = titleCase(ori.nome || rId);
+      toast(novoFaltou ? `${nome} — falta registrada` : `${nome} — falta cancelada`,
+        novoFaltou ? 'warning' : 'success');
     },
 
     async confirmarAddMembro() {
