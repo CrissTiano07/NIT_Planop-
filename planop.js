@@ -901,8 +901,8 @@ const NIT_PLANOP = (() => {
         return `<div class="ops-item ${ativo}" onclick="NIT_PLANOP.UI.selOp('${id}')">
           <div class="ops-item-icon">${icon}</div>
           <div class="ops-item-body">
-            <div class="ops-item-name">${esc(titleCase(op.tipoMissao||op.nome||'—'))}</div>
-            <div class="ops-item-sub">${esc([titleCase(op.bairro||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))}</div>
+            <div class="ops-item-name">${esc(titleCase(op.bairro||op.nome||'—'))}</div>
+            <div class="ops-item-sub">${esc([titleCase(op.tipoMissao||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))}</div>
           </div>
           <span class="ops-status-dot ${dot}"></span>
           ${canWrite() ? `
@@ -987,11 +987,11 @@ const NIT_PLANOP = (() => {
           <div class="op-topbar-icon">${opIconLg(op.tipoMissao)}</div>
           <div class="op-topbar-info">
             <div class="op-topbar-name">
-              ${esc(titleCase(op.nome||'—'))}
+              ${esc(titleCase(op.bairro||op.nome||'—'))}
               <span class="badge-ativo">ATIVO</span>
             </div>
             <div class="op-topbar-sub">
-              ${op.horario ? `Início ${op.horario}h` : titleCase(op.bairro||'')}
+              ${[titleCase(op.tipoMissao||''), op.horario ? `Início ${op.horario}h` : ''].filter(Boolean).join(' · ')}
             </div>
           </div>
           <div class="op-topbar-right">
