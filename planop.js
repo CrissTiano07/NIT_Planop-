@@ -222,11 +222,12 @@ const NIT_PLANOP = (() => {
   // Cor do dot de operação na sidebar
   const opDot = opId => {
     const postsOp = Object.values(S.postos).filter(p => p.operacaoId === opId);
-    if (!postsOp.length) return 'vermelho';
+    // Sem postos = rascunho, estado inicial natural — não é problema
+    if (!postsOp.length) return 'rascunho';
     const vazios = postsOp.filter(p => !Object.keys(p.orientadores||{}).length).length;
-    if (vazios === 0) return 'verde';
-    if (vazios === postsOp.length) return 'vermelho';
-    return 'amarelo';
+    if (vazios === 0) return 'verde';          // todos os postos cobertos
+    if (vazios === postsOp.length) return 'vermelho'; // nenhum posto coberto = crítico real
+    return 'amarelo';                           // cobertura parcial
   };
 
   // Toast
