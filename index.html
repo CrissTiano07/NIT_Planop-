@@ -253,7 +253,14 @@
         onclick="NIT_PLANOP.UI.limparBuscaOps()" aria-label="Limpar busca">×</button>
     </div>
 
-    <div class="section-label-row">OPERAÇÕES</div>
+    <div class="section-label-row">
+      <span>OPERAÇÕES</span>
+      <div class="data-nav" id="data-nav">
+        <button class="data-nav-btn" onclick="NIT_PLANOP.UI.navegarData(-1)" title="Dia anterior" aria-label="Dia anterior">‹</button>
+        <button class="data-nav-label" id="data-nav-label" onclick="NIT_PLANOP.UI.voltarHoje()" title="Voltar para hoje">Hoje</button>
+        <button class="data-nav-btn" onclick="NIT_PLANOP.UI.navegarData(1)" title="Próximo dia" aria-label="Próximo dia">›</button>
+      </div>
+    </div>
 
     <!-- Lista de operações -->
     <div id="ops-lista" class="ops-lista"></div>
