@@ -1800,3 +1800,12 @@ input:focus {
   border-radius: 3px; padding: 1px 5px;
   font-family: var(--font-mono); font-size: 10px;
 }
+
+/* Badge composto — presentes · faltaram */
+.badge-falta {
+  color: var(--danger);
+  font-weight: 800;
+}
+.qru-badge.badge-composto {
+  display: inline-flex; align-items: center; gap: 4px;
+}
