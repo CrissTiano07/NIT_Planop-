@@ -180,6 +180,51 @@
         </label>
         <input id="nop-horario" type="time" class="input-sm">
 
+        <label class="form-label">Recorrência</label>
+        <div class="recorrencia-tabs" id="nop-recorrencia-tabs">
+          <button type="button" class="rec-tab active" data-rec="unica"
+            onclick="NIT_PLANOP.UI.selRecorrencia('unica')">Única</button>
+          <button type="button" class="rec-tab" data-rec="diaria"
+            onclick="NIT_PLANOP.UI.selRecorrencia('diaria')">Diária</button>
+          <button type="button" class="rec-tab" data-rec="semanal"
+            onclick="NIT_PLANOP.UI.selRecorrencia('semanal')">Semanal</button>
+          <button type="button" class="rec-tab" data-rec="anual"
+            onclick="NIT_PLANOP.UI.selRecorrencia('anual')">Anual</button>
+        </div>
+        <input id="nop-recorrencia" type="hidden" value="unica">
+
+        <!-- Dias da semana (só para recorrência semanal) -->
+        <div id="nop-dias-semana" class="dias-semana hidden">
+          <label class="form-label">Dias</label>
+          <div class="dias-chips">
+            <button type="button" class="dia-chip" data-dia="0" onclick="NIT_PLANOP.UI.toggleDia(0)">Dom</button>
+            <button type="button" class="dia-chip" data-dia="1" onclick="NIT_PLANOP.UI.toggleDia(1)">Seg</button>
+            <button type="button" class="dia-chip" data-dia="2" onclick="NIT_PLANOP.UI.toggleDia(2)">Ter</button>
+            <button type="button" class="dia-chip" data-dia="3" onclick="NIT_PLANOP.UI.toggleDia(3)">Qua</button>
+            <button type="button" class="dia-chip" data-dia="4" onclick="NIT_PLANOP.UI.toggleDia(4)">Qui</button>
+            <button type="button" class="dia-chip" data-dia="5" onclick="NIT_PLANOP.UI.toggleDia(5)">Sex</button>
+            <button type="button" class="dia-chip" data-dia="6" onclick="NIT_PLANOP.UI.toggleDia(6)">Sáb</button>
+          </div>
+        </div>
+
+        <!-- Vigência (para recorrentes) -->
+        <div id="nop-vigencia" class="vigencia-wrap hidden">
+          <div class="vigencia-datas">
+            <div class="vigencia-campo">
+              <label class="form-label">Início</label>
+              <input id="nop-data-inicio" type="date" class="input-sm">
+            </div>
+            <div class="vigencia-campo">
+              <label class="form-label">Fim</label>
+              <input id="nop-data-fim" type="date" class="input-sm">
+            </div>
+          </div>
+          <label class="vigencia-sem-prazo">
+            <input type="checkbox" id="nop-sem-prazo" onchange="NIT_PLANOP.UI.toggleSemPrazo(this.checked)">
+            Sem prazo (operação fixa, sem data de término)
+          </label>
+        </div>
+
         <label class="form-label">Nome
           <span class="form-hint">gerado automaticamente</span>
         </label>
