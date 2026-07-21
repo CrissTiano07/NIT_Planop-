@@ -21,8 +21,8 @@ const NIT_PLANOP = (() => {
     },
     TURNOS: {
       manha: { label:'MANHÃ',  inicio:'05:30', fim:'11:30', minI:330,  minF:690  },
-      tarde: { label:'TARDE',  inicio:'11:30', fim:'17:30', minI:690,  minF:1050 },
-      noite: { label:'NOITE',  inicio:'17:30', fim:'23:30', minI:1050, minF:1410 },
+      tarde: { label:'TARDE',  inicio:'10:30', fim:'16:30', minI:630,  minF:990  },
+      noite: { label:'NOITE',  inicio:'15:30', fim:'21:30', minI:930,  minF:1290 },
       extraordinario: { label:'EXTRAORDINÁRIO', inicio:'', fim:'', minI:0, minF:0 }
     },
     TURNOS_ORDEM: ['manha','tarde','noite','extraordinario'],
@@ -160,6 +160,38 @@ const NIT_PLANOP = (() => {
     const brt = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Fortaleza'}));
     return brt.toISOString().slice(0,10);
   };
+
+  // Fase 2: decide se uma operação (recorrente ou não) acontece numa data YYYY-MM-DD
+  const operacaoAconteceEm = (op, dataStr) => {
+    const rec = op.recorrencia || 'unica';
+
+    // Operação única: acontece se não tem recorrência definida (comportamento legado)
+    // ou se a dataInicio bate com a data (quando for evento único datado)
+    if (rec === 'unica') return true; // únicas aparecem no turno ativo, sem filtro de data
+
+    // Vigência: fora do intervalo [dataInicio, dataFim] não acontece
+    if (op.dataInicio && dataStr < op.dataInicio) return false;
+    if (op.dataFim && dataStr > op.dataFim) return false;
+
+    if (rec === 'diaria') return true;
+
+    if (rec === 'semanal') {
+      const dias = op.diasSemana || [];
+      // getDay() no fuso local da data
+      const [y,m,d] = dataStr.split('-').map(Number);
+      const diaSemana = new Date(y, m-1, d).getDay(); // 0=domingo
+      return dias.includes(diaSemana);
+    }
+
+    if (rec === 'anual') {
+      // Acontece no mesmo dia/mês da dataInicio, todo ano
+      if (!op.dataInicio) return false;
+      return op.dataInicio.slice(5) === dataStr.slice(5); // MM-DD igual
+    }
+
+    return false;
+  };
+
   const getHoraAtual = () => {
     const brt = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Fortaleza'}));
     return `${String(brt.getHours()).padStart(2,'0')}:${String(brt.getMinutes()).padStart(2,'0')}`;
@@ -1083,9 +1115,11 @@ const NIT_PLANOP = (() => {
       const lista = $('ops-lista');
       if (!lista) return;
       const busca = S._buscaEquipes.toLowerCase().trim();
+      const dataVista = S._dataVista || getDataHoje();
 
-      // Todas as operações visíveis (filtro de busca)
+      // Todas as operações visíveis (filtro de busca + projeção de recorrência)
       let todasOps = Object.entries(S.operacoes)
+        .filter(([,op]) => operacaoAconteceEm(op, dataVista))
         .sort(([,a],[,b]) => (a.ordem||0)-(b.ordem||0));
       if (busca) todasOps = todasOps.filter(([,o]) =>
         (o.nome||'').toLowerCase().includes(busca) ||
@@ -2486,6 +2520,38 @@ const NIT_PLANOP = (() => {
     },
 
     // ── NOVA OPERAÇÃO (sidebar inline)
+    navegarData(delta) {
+      const atual = S._dataVista || getDataHoje();
+      const [y,m,d] = atual.split('-').map(Number);
+      const nova = new Date(y, m-1, d + delta);
+      S._dataVista = nova.toISOString().slice(0,10);
+      UI._atualizarLabelData();
+      UI.renderOpsList();
+    },
+
+    voltarHoje() {
+      S._dataVista = getDataHoje();
+      UI._atualizarLabelData();
+      UI.renderOpsList();
+    },
+
+    _atualizarLabelData() {
+      const lbl = $('data-nav-label');
+      if (!lbl) return;
+      const vista = S._dataVista || getDataHoje();
+      const hoje  = getDataHoje();
+      if (vista === hoje) {
+        lbl.textContent = 'Hoje';
+        lbl.classList.remove('data-outra');
+      } else {
+        const [y,m,d] = vista.split('-').map(Number);
+        const dt = new Date(y, m-1, d);
+        const diasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+        lbl.textContent = `${diasSemana[dt.getDay()]} ${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}`;
+        lbl.classList.add('data-outra');
+      }
+    },
+
     selRecorrencia(rec) {
       const hidden = $('nop-recorrencia');
       if (hidden) hidden.value = rec;
