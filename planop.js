@@ -227,6 +227,75 @@ const NIT_PLANOP = (() => {
     t.textContent = msg;
     cont.appendChild(t);
     setTimeout(() => t.remove(), ms);
+    return t;
+  };
+
+  // Toast com ação de desfazer — padrão Gmail
+  const toastUndo = (msg, onUndo, ms=5000) => {
+    let cont = $('toast-container');
+    if (!cont) {
+      cont = document.createElement('div');
+      cont.id = 'toast-container';
+      document.body.appendChild(cont);
+    }
+    const t = document.createElement('div');
+    t.className = 'toast toast-undo';
+    t.innerHTML = `<span>${msg}</span>`;
+    const btn = document.createElement('button');
+    btn.className = 'toast-undo-btn';
+    btn.textContent = 'Desfazer';
+    let desfeito = false;
+    btn.onclick = () => { desfeito = true; onUndo?.(); t.remove(); };
+    t.appendChild(btn);
+    cont.appendChild(t);
+    setTimeout(() => { if (!desfeito) t.remove(); }, ms);
+    return t;
+  };
+
+  // Traduz erros técnicos do Firebase para linguagem humana
+  const erroHumano = (e) => {
+    const msg = String(e?.message || e || '');
+    if (msg.includes('PERMISSION_DENIED'))
+      return 'Sem permissão para esta ação. Peça ao supervisor do turno.';
+    if (msg.includes('network') || msg.includes('offline') || msg.includes('unavailable'))
+      return 'Sem conexão. A mudança será salva quando reconectar.';
+    if (msg.includes('quota') || msg.includes('resource'))
+      return 'Limite temporário atingido. Tente em instantes.';
+    return 'Algo deu errado. Tente novamente.';
+  };
+
+  // Save indicator global — pulso âmbar durante write, verde ao confirmar
+  let _pendingWrites = 0;
+  const setSaveState = (estado) => {
+    const dot = $('save-indicator-dot');
+    const lbl = $('save-indicator-lbl');
+    if (!dot) return;
+    dot.className = `save-dot ${estado}`;
+    if (lbl) {
+      lbl.textContent = estado === 'saving' ? 'Salvando…'
+        : estado === 'error' ? 'Erro ao salvar'
+        : estado === 'offline' ? `${_pendingWrites} pendente${_pendingWrites!==1?'s':''}`
+        : 'Salvo';
+    }
+  };
+
+  // Wrapper de write com feedback visual + tradução de erro
+  const safeWrite = async (promise, { successMsg, errorMsg } = {}) => {
+    _pendingWrites++;
+    setSaveState('saving');
+    try {
+      const r = await promise;
+      _pendingWrites = Math.max(0, _pendingWrites - 1);
+      setSaveState(_pendingWrites > 0 ? 'saving' : 'saved');
+      if (successMsg) toast(successMsg, 'success');
+      return r;
+    } catch (e) {
+      _pendingWrites = Math.max(0, _pendingWrites - 1);
+      setSaveState('error');
+      toast(errorMsg || erroHumano(e), 'danger', 5000);
+      console.error('[safeWrite]', e);
+      throw e;
+    }
   };
 
   /* ── AUTH ──────────────────────────────────────────────── */
@@ -452,6 +521,9 @@ const NIT_PLANOP = (() => {
         if (!bar) return;
         bar.className = `conexao-bar ${online ? 'conexao-online' : 'conexao-offline'}`;
         if (lbl) lbl.textContent = online ? 'Firebase online' : 'Sem conexão';
+        // Save indicator reflete estado offline
+        if (!online) setSaveState('offline');
+        else if (_pendingWrites === 0) setSaveState('saved');
       });
       S._unsubs.push(() => ref.off('value', fn));
     },
@@ -2959,99 +3031,114 @@ const NIT_PLANOP = (() => {
       UI._fecharTodosMenus();
       const op = S.operacoes[opId];
       if (!op) return;
-      const nPostos = Object.values(S.postos).filter(p => p.operacaoId === opId).length;
-      const label   = nPostos > 0
-        ? `Deletar "${titleCase(op.nome)}" e ${nPostos} posto(s)?`
-        : `Deletar "${titleCase(op.nome)}"?`;
-      const opEl = document.querySelector(`#ops-lista .ops-item[onclick*="'${opId}'"]`);
-      if (opEl?.querySelector('.inline-confirm')) { opEl.querySelector('.inline-confirm').remove(); return; }
-      const ic = document.createElement('div');
-      ic.className = 'inline-confirm';
-      ic.innerHTML = `<span>${esc(label)}</span>
-        <button class="btn-ghost-sm" onclick="this.closest('.inline-confirm').remove()">Não</button>
-        <button class="btn-danger-sm" onclick="NIT_PLANOP.Actions._doDeletarOp('${opId}')">Sim</button>`;
-      opEl?.appendChild(ic);
+
+      // Snapshot completo para possível undo
+      const postosOp = Object.entries(S.postos).filter(([,p]) => p.operacaoId === opId);
+      const snapshot = {
+        op: { ...op },
+        postos: postosOp.map(([pid, p]) => [pid, { ...p }])
+      };
+
+      // Esconder da UI imediatamente (soft delete)
+      const opRestore = S.operacoes[opId];
+      const postosRestore = {};
+      postosOp.forEach(([pid, p]) => { postosRestore[pid] = p; delete S.postos[pid]; });
+      delete S.operacoes[opId];
+      const eraSelected = S.operacaoSel === opId;
+      if (eraSelected) S.operacaoSel = null;
+      UI.renderOpsList();
+      UI.renderMainContent();
+
+      let desfeito = false;
+      const nome = titleCase(op.nome);
+      toastUndo(`"${esc(nome)}" removida`, () => {
+        desfeito = true;
+        // Restaurar no estado local
+        S.operacoes[opId] = opRestore;
+        Object.entries(postosRestore).forEach(([pid, p]) => { S.postos[pid] = p; });
+        if (eraSelected) S.operacaoSel = opId;
+        UI.renderOpsList();
+        UI.renderMainContent();
+        toast('Remoção desfeita', 'success');
+      }, 5000);
+
+      // Após 5s sem undo, commit no Firebase
+      setTimeout(async () => {
+        if (desfeito) return;
+        await Actions._commitDeleteOp(opId, snapshot);
+      }, 5200);
     },
 
-    async _doDeletarOp(opId) {
-      document.querySelector('.inline-confirm')?.remove();
-      vibrar([60,40,60]);
-
-      const postosOp = Object.entries(S.postos).filter(([,p]) => p.operacaoId === opId);
-
-      // Bug 3 fix: coletar TODOS os recursos a liberar antes de qualquer delete.
-      // O emOutro é calculado com S.postos intacto — sem mutação durante o loop.
-      const postosIds  = new Set(postosOp.map(([pid]) => pid));
-      const aLiberar   = new Set();
-      for (const [pid, posto] of postosOp) {
-        for (const rId of Object.keys(posto.orientadores||{})) {
-          // Só libera se o recurso não está em OUTRO posto (fora desta operação)
+    async _commitDeleteOp(opId, snapshot) {
+      const postosIds = new Set(snapshot.postos.map(([pid]) => pid));
+      const aLiberar  = new Set();
+      snapshot.postos.forEach(([, posto]) => {
+        Object.keys(posto.orientadores||{}).forEach(rId => {
           const emOutro = Object.entries(S.postos)
             .some(([id2, p2]) => !postosIds.has(id2) && p2.orientadores?.[rId]);
           if (!emOutro) aLiberar.add(rId);
-        }
-      }
-
-      // 1. Liberar recursos (batch update único)
-      if (aLiberar.size) {
-        const updates = {};
-        aLiberar.forEach(rId => {
-          updates[`${rId}/status`] = 'disponivel';
-          if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
         });
-        await S.db.ref('efetivo/recursos').update(updates);
+      });
+      try {
+        if (aLiberar.size) {
+          const updates = {};
+          aLiberar.forEach(rId => {
+            updates[`${rId}/status`] = 'disponivel';
+            if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
+          });
+          await S.db.ref('efetivo/recursos').update(updates);
+        }
+        for (const [pid] of snapshot.postos) {
+          await S.db.ref(`efetivo/postos/${pid}`).remove();
+        }
+        await S.db.ref(`efetivo/operacoes/${opId}`).remove();
+        UI.renderRightPanel();
+      } catch (e) {
+        toast(erroHumano(e), 'danger', 5000);
       }
-
-      // 2. Deletar postos
-      for (const [pid] of postosOp) {
-        await S.db.ref(`efetivo/postos/${pid}`).remove();
-        delete S.postos[pid];
-      }
-
-      // 3. Deletar operação
-      await S.db.ref(`efetivo/operacoes/${opId}`).remove();
-      delete S.operacoes[opId];
-      if (S.operacaoSel === opId) S.operacaoSel = null;
-
-      UI.renderOpsList();
-      UI.renderMainContent();
-      UI.renderRightPanel();
-      toast('Operação deletada', 'info');
     },
 
     async deletarPosto(postoId) {
       UI._fecharTodosMenus();
       const posto = S.postos[postoId];
       if (!posto) return;
-      const card = document.getElementById(`qru-${postoId}`);
-      if (card?.querySelector('.inline-confirm')) { card.querySelector('.inline-confirm').remove(); return; }
-      const ic = document.createElement('div');
-      ic.className = 'inline-confirm inline-confirm-danger';
-      ic.innerHTML = `<span>Remover posto Nº ${posto.numero}?</span>
-        <button class="btn-ghost-sm" onclick="this.closest('.inline-confirm').remove()">Não</button>
-        <button class="btn-danger-sm" onclick="NIT_PLANOP.Actions._doDeletarPosto('${postoId}')">Sim</button>`;
-      card?.querySelector('.qru-card-header')?.appendChild(ic);
-    },
 
-    async _doDeletarPosto(postoId) {
-      document.querySelector('.inline-confirm')?.remove();
-      vibrar(60);
-      const posto = S.postos[postoId];
-      if (!posto) return;
-      for (const rId of Object.keys(posto.orientadores||{})) {
-        const emOutro = Object.entries(S.postos)
-          .some(([id2,p2]) => id2!==postoId && p2.orientadores?.[rId]);
-        if (!emOutro) {
-          await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
-          if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
-        }
-      }
-      await S.db.ref(`efetivo/postos/${postoId}`).remove();
-      delete S.postos[postoId];  // update otimista
+      const snapshot = { [postoId]: { ...posto } };
+      const restore  = posto;
+      delete S.postos[postoId]; // soft delete
       UI.renderOpsList();
       UI.renderMainContent();
-      UI.renderRightPanel();
-      toast('Posto removido', 'info');
+
+      let desfeito = false;
+      toastUndo(`Posto Nº ${posto.numero} removido`, () => {
+        desfeito = true;
+        S.postos[postoId] = restore;
+        UI.renderOpsList();
+        UI.renderMainContent();
+        toast('Remoção desfeita', 'success');
+      }, 5000);
+
+      setTimeout(async () => {
+        if (desfeito) return;
+        await Actions._commitDeletePosto(postoId, snapshot[postoId]);
+      }, 5200);
+    },
+
+    async _commitDeletePosto(postoId, posto) {
+      try {
+        for (const rId of Object.keys(posto.orientadores||{})) {
+          const emOutro = Object.entries(S.postos)
+            .some(([id2,p2]) => id2!==postoId && p2.orientadores?.[rId]);
+          if (!emOutro) {
+            await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
+            if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
+          }
+        }
+        await S.db.ref(`efetivo/postos/${postoId}`).remove();
+        UI.renderRightPanel();
+      } catch (e) {
+        toast(erroHumano(e), 'danger', 5000);
+      }
     },
 
     async salvarObs(postoId, val) {
