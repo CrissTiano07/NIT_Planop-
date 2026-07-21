@@ -1851,3 +1851,18 @@ input:focus {
 .staff-row-wrap.ativo .staff-row {
   background: var(--accent-dim);
 }
+
+/* Legenda de cores por turno */
+.turno-legenda {
+  display: flex; gap: var(--space-3);
+  padding: 6px var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+.tl-item {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; color: var(--text-tertiary);
+}
+.tl-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+}
