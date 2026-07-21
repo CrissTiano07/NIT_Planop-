@@ -1955,3 +1955,112 @@ input:focus {
   background: var(--text-muted);
   opacity: 0.5;
 }
+
+/* ═══ NAVEGAÇÃO POR TURNO ═══════════════════════════════ */
+.turno-grupo {
+  border-bottom: 1px solid var(--border);
+}
+.turno-cabecalho {
+  display: flex; align-items: baseline; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) 6px;
+}
+.turno-nome {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
+  color: var(--text-secondary); text-transform: uppercase;
+}
+.turno-horario {
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--text-muted); letter-spacing: 0.02em;
+}
+.turno-badge-atual {
+  margin-left: auto; font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--success); background: var(--success-dim);
+  padding: 1px 7px; border-radius: 10px;
+}
+.turno-grupo.turno-atual .turno-nome { color: var(--accent); }
+.turno-ops { display: flex; flex-direction: column; }
+.turno-vazio {
+  padding: 6px var(--space-4) var(--space-3) 44px;
+  font-size: 11px; color: var(--text-muted); font-style: italic;
+}
+
+/* Horário fora do padrão do turno */
+.ops-hora {
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--text-muted); font-weight: 500;
+}
+.ops-hora.fora-padrao {
+  color: var(--warning); font-weight: 700;
+}
+
+/* Estados de operação */
+.ops-badge-plan {
+  font-size: 8px; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--text-muted); background: var(--bg-card);
+  border: 1px dashed var(--border-strong);
+  padding: 1px 5px; border-radius: 4px; margin-left: 4px;
+}
+.ops-badge-rend {
+  font-size: 8px; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--accent); background: var(--accent-dim);
+  padding: 1px 5px; border-radius: 4px; margin-left: 4px;
+}
+.ops-item.ops-planejada {
+  opacity: 0.68;
+}
+.ops-item.ops-planejada .ops-item-icon { opacity: 0.6; }
+.ops-item.ops-rendicao {
+  border-left: 2px solid var(--accent);
+}
+
+/* ═══ RECORRÊNCIA (form de nova operação) ═══════════════ */
+.recorrencia-tabs {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 4px; margin-bottom: var(--space-2);
+}
+.rec-tab {
+  padding: 6px 4px; font-size: 11px; font-weight: 500;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-tertiary);
+  cursor: pointer; transition: all var(--dur-fast);
+}
+.rec-tab:hover { border-color: var(--accent); color: var(--text-secondary); }
+.rec-tab.active {
+  background: var(--accent-dim); border-color: var(--accent);
+  color: var(--accent); font-weight: 600;
+}
+
+.dias-semana { margin-bottom: var(--space-2); }
+.dias-chips {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+}
+.dia-chip {
+  padding: 6px 2px; font-size: 10px; font-weight: 500;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-muted);
+  cursor: pointer; transition: all var(--dur-fast);
+}
+.dia-chip:hover { border-color: var(--accent); }
+.dia-chip.active {
+  background: var(--accent); border-color: var(--accent);
+  color: #0d1826; font-weight: 700;
+}
+
+.vigencia-wrap { margin-bottom: var(--space-2); }
+.vigencia-datas {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2);
+}
+.vigencia-sem-prazo {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: var(--space-2); font-size: 11px;
+  color: var(--text-secondary); cursor: pointer;
+}
+.vigencia-sem-prazo input { accent-color: var(--accent); }
+
+/* Rótulo de recorrência na lista */
+.ops-recorrencia {
+  display: inline-block; margin-top: 2px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.03em;
+  color: var(--accent); opacity: 0.85;
+}
