@@ -1,274 +1,1853 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>CENTRAL OPS · Plano Operacional</title>
-  <!-- Tipografia: Inter (UI) + JetBrains Mono (dados/código) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230d1826%22/><text x=%2250%22 y=%2268%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%2358a6ff%22 font-family=%22monospace%22 font-weight=%22bold%22>C</text></svg>">
-  <link rel="stylesheet" href="planop.css">
-</head>
-<body>
+/* ═══════════════════════════════════════════════════════════
+   CENTRAL OPS · PLANO OPERACIONAL
+   Design system alinhado ao NIT Sistema Integrado
+═══════════════════════════════════════════════════════════ */
 
-<!-- ═══════════════════════════════════════════════════════
-     TELA DE LOGIN
-═══════════════════════════════════════════════════════ -->
-<div id="login-screen" class="login-screen hidden">
-  <div class="login-card">
-    <div class="login-brand">
-      <div class="brand-pulse" aria-hidden="true">
-        <span></span><span></span><span></span>
-      </div>
-      <div class="login-brand-text">
-        <span class="login-brand-name">CENTRAL OPS</span>
-        <span class="login-brand-sub">PLANO OPERACIONAL · AMC FORTALEZA</span>
-      </div>
-    </div>
-    <p class="login-desc">Acesso restrito a supervisores e monitores autorizados.</p>
-    <button class="btn-login-google" onclick="NIT_PLANOP.Auth.login()">
-      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
-        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-        <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
-        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
-      </svg>
-      Entrar com Google
-    </button>
-  </div>
-</div>
+/* ── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --bg:            #0d1826;
+  --bg-surface:    #111e2e;
+  --bg-card:       #162035;
+  --border:        rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+  --surface-hover: rgba(255,255,255,0.05);
 
-<!-- ═══════════════════════════════════════════════════════
-     MODO CAMPO (agente de campo — acesso anônimo)
-═══════════════════════════════════════════════════════ -->
-<div id="app-campo" class="hidden">
-  <header class="campo-header">
-    <div class="campo-brand">
-      <div class="brand-pill" aria-label="Central OPS">C</div>
-      <span class="campo-brand-name">CENTRAL OPS</span>
-    </div>
-    <span id="campo-turno-badge" class="campo-turno-badge"></span>
-    <span id="campo-clock" class="campo-clock"></span>
-  </header>
+  --accent:        #58a6ff;
+  --accent-dim:    rgba(88,166,255,0.12);
+  --success:       #38bd6b;
+  --success-dim:   rgba(56,189,107,0.12);
+  --warning:       #fbbf24;
+  --warning-dim:   rgba(251,191,36,0.12);
+  --danger:        #ef4444;
+  --danger-dim:    rgba(239,68,68,0.12);
 
-  <main class="campo-main">
-    <div class="campo-search-wrap">
-      <label class="campo-search-label">CONSULTA DE QTH</label>
-      <div class="campo-search-row">
-        <input id="campo-busca" type="text" class="campo-input"
-          placeholder="Digite seu nome..." autocomplete="off"
-          oninput="NIT_PLANOP.Campo.onBusca(this.value)">
-        <button class="campo-clear hidden" id="campo-clear"
-          onclick="NIT_PLANOP.Campo.limpar()" aria-label="Limpar">×</button>
-      </div>
-      <p class="campo-hint">Mínimo 2 letras · Confirme pela matrícula</p>
-    </div>
-    <div id="campo-resultado" class="campo-resultado"></div>
-  </main>
+  --text-primary:   #f8faff;
+  --text-secondary: #b0c8e8;
+  --text-muted:     #64748b;
+  --text-tertiary:  #94a3b8;
 
-  <footer class="campo-footer">
-    <a href="?" class="campo-footer-link">← Painel de controle</a>
-    <span class="campo-footer-ver">v2.0 CENTRAL OPS</span>
-  </footer>
-</div>
+  --font-ui:   'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
 
-<!-- ═══════════════════════════════════════════════════════
-     DASHBOARD PRINCIPAL (3 colunas)
-═══════════════════════════════════════════════════════ -->
-<div id="app-dashboard" class="app-dashboard hidden">
+  --radius:    6px;
+  --radius-lg: 8px;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-11: 44px;
 
-  <!-- ── COLUNA 1: SIDEBAR ─────────────────────────────── -->
-  <aside class="sidebar" id="sidebar">
+  --z-sidebar:  10;
+  --z-dropdown: 100;
+  --z-modal:    500;
+  --z-toast:    9999;
 
-    <!-- Header da marca -->
-    <div class="sidebar-header">
-      <div class="sidebar-brand">
-        <div class="brand-pulse sidebar-pulse" aria-hidden="true">
-          <span></span><span></span><span></span>
-        </div>
-        <div class="sidebar-brand-text">
-          <span class="sidebar-brand-name">CENTRAL OPS</span>
-          <span class="sidebar-brand-sub">PLANO OPERACIONAL</span>
-        </div>
-      </div>
-      <div class="settings-wrap">
-        <button class="btn-icon-nav" title="Configurações"
-          aria-label="Configurações"
-          onclick="NIT_PLANOP.UI.toggleSettings(event)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-          </svg>
-        </button>
-        <div id="settings-menu" class="settings-menu hidden"></div>
-      </div>
-    </div>
+  --dur-fast:   150ms;
+  --dur-normal: 220ms;
+  --ease-out:   cubic-bezier(0.16,1,0.3,1);
 
-    <!-- Status do turno -->
-    <div class="shift-bar" id="shift-bar">
-      <div class="shift-bar-idle hidden" id="shift-idle">
-        <span class="shift-dot shift-dot-off"></span>
-        <span class="shift-idle-text">Nenhum turno ativo</span>
-        <button class="btn-shift-open" onclick="NIT_PLANOP.UI.abrirTurno()">
-          Abrir turno
-        </button>
-      </div>
-      <div class="shift-bar-active hidden" id="shift-active">
-        <span class="shift-dot shift-dot-on" aria-hidden="true"></span>
-        <span id="shift-label-text" class="shift-label"></span>
-      </div>
-    </div>
+  /* Sidebar */
+  --sidebar-w: 320px;
+  --right-w:   320px;
 
-    <!-- Encerrar turno movido para menu de configurações (⚙) -->
+  /* ── LIFECYCLE DE OPERAÇÃO — sistema semiótico de duas camadas ──
+     Camada 1 (sidebar dots): andamento temporal da operação
+       cinza  = planejada / não iniciou  (neutro, sem julgamento)
+       laranja = ativa / em andamento    (índice de calor/atividade)
+       verde   = concluída / encerrada   (resolução)
+     Camada 2 (QRU card borders): cobertura do posto
+       vermelho = sem orientador | âmbar = com orientador(es)
+     As camadas operam em espaços visuais distintos para evitar
+     conflito semântico — Lei da Semelhança (Gestalt).             */
+  --lifecycle-pending:     #64748b;
+  --lifecycle-active:      #f97316;
+  --lifecycle-done:        #38bd6b;
+  --lifecycle-pending-dim: rgba(100,116,139,0.15);
+  --lifecycle-active-dim:  rgba(249,115,22,0.15);
+  --lifecycle-done-dim:    rgba(56,189,107,0.15);
+}
 
-    <!-- Supervisão do turno -->
-    <div class="sidebar-section" id="supervisao-section">
-      <button class="sidebar-section-toggle" id="supervisao-toggle"
-        onclick="NIT_PLANOP.UI.toggleSupervisao()" aria-expanded="true">
-        <span class="section-label">SUPERVISÃO DO TURNO</span>
-        <span id="supervisao-count" class="section-count">—</span>
-        <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
-      <div id="supervisao-body" class="section-body">
-        <div id="supervisao-lista" class="supervisao-lista"></div>
-        <button class="btn-add-membro" onclick="NIT_PLANOP.UI.abrirAddMembro()">
-          + Adicionar membro
-        </button>
-        <button class="btn-salvar-padrao" onclick="NIT_PLANOP.Actions.salvarSupervisaoPadrao()">
-          Salvar como padrão para este turno
-        </button>
-      </div>
-    </div>
+/* ── RESET ───────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; overflow:hidden; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* OpenType features do Inter — melhora legibilidade de l/1/I e outros */
+  font-feature-settings: "cv11", "ss01";
+}
 
-    <!-- Nova operação -->
-    <div class="sidebar-nova-op">
-      <button class="btn-nova-op" id="btn-nova-op"
-        onclick="NIT_PLANOP.UI.toggleNovaOp()">
-        + Nova Operação
-      </button>
-      <div id="nova-op-form" class="nova-op-form hidden">
-        <label class="form-label">Bairro *</label>
-        <div class="combo-wrap">
-          <input id="nop-bairro" type="text" class="input-sm"
-            placeholder="Digite o bairro..."
-            autocomplete="off">
-          <div id="nop-bairro-list" class="combo-drop"></div>
-        </div>
+/* Scrollbar discreta — não quebra o visual dark */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
 
-        <label class="form-label">Tipo de missão *</label>
-        <div class="combo-wrap">
-          <input id="nop-tipo-input" type="text" class="input-sm"
-            placeholder="Digite para filtrar..."
-            autocomplete="off">
-          <div id="nop-tipo-list" class="combo-drop"></div>
-        </div>
-        <input id="nop-tipo" type="hidden" value="">
+/* Números tabulares no mono — todos com a mesma largura */
+.font-mono, [class*="font-mono"],
+.shift-clock, .topbar-clock, .qru-num,
+.staff-cargo-pill, .section-count, .campo-clock {
+  font-feature-settings: "tnum";
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+:focus:not(:focus-visible) { outline: none; }
+a { color: var(--accent); text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+input, select { font-family: inherit; font-size: 13px; color: var(--text-primary); }
+.hidden { display: none !important; }
 
-        <label class="form-label">Horário de início
-          <span class="form-hint">opcional</span>
-        </label>
-        <input id="nop-horario" type="time" class="input-sm">
+/* ── LOGIN ───────────────────────────────────────────────── */
+.login-screen {
+  display: flex; align-items: center; justify-content: center;
+  height: 100vh; background: var(--bg);
+}
+.login-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  width: 360px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+}
+.login-brand {
+  display: flex; align-items: center; gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.login-brand-text { display:flex; flex-direction:column; gap:2px; }
+.login-brand-name {
+  font-size: 16px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+.login-brand-sub {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+  color: var(--text-muted); text-transform: uppercase;
+}
+.login-desc {
+  font-size: 12px; color: var(--text-tertiary);
+  margin-bottom: var(--space-5); line-height: 1.6;
+}
+.btn-login-google {
+  display: flex; align-items: center; justify-content: center;
+  gap: var(--space-3); width: 100%; height: 42px;
+  background: var(--bg-card); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); color: var(--text-primary);
+  font-size: 13px; font-weight: 500;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.btn-login-google:hover {
+  background: var(--surface-hover); border-color: var(--accent);
+}
 
-        <label class="form-label">Nome
-          <span class="form-hint">gerado automaticamente</span>
-        </label>
-        <input id="nop-nome" type="text" class="input-sm"
-          placeholder="Ex: Controle de Tráfego — Aldeota">
+/* ── BRAND PULSE (logo animado) ──────────────────────────── */
+.brand-pulse {
+  display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+}
+.brand-pulse span {
+  display: block; width: 3px; border-radius: 2px;
+  background: var(--accent);
+  animation: pulse-bar 1.4s ease-in-out infinite;
+}
+.brand-pulse span:nth-child(1) { height: 10px; animation-delay: 0s; }
+.brand-pulse span:nth-child(2) { height: 16px; animation-delay: .2s; }
+.brand-pulse span:nth-child(3) { height: 10px; animation-delay: .4s; }
+@keyframes pulse-bar {
+  0%,100% { opacity:.4; transform:scaleY(.7); }
+  50%      { opacity:1;  transform:scaleY(1); }
+}
 
-        <div class="nova-op-footer">
-          <button class="btn-ghost-sm" onclick="NIT_PLANOP.UI.fecharNovaOp()">
-            Cancelar
-          </button>
-          <button class="btn-accent-sm" onclick="NIT_PLANOP.Actions.criarOperacao()">
-            Criar Operação
-          </button>
-        </div>
-      </div>
-    </div>
+/* ── LAYOUT: 3 COLUNAS ───────────────────────────────────── */
+.app-dashboard {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr var(--right-w);
+  height: 100vh;
+  overflow: hidden;
+}
 
-    <!-- Busca de operações -->
-    <div class="sidebar-search">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input id="sidebar-busca" type="text" placeholder="Buscar operação..."
-        oninput="NIT_PLANOP.UI.filtrarOps(this.value)">
-      <button class="sidebar-busca-clear hidden" id="sidebar-busca-clear"
-        onclick="NIT_PLANOP.UI.limparBuscaOps()" aria-label="Limpar busca">×</button>
-    </div>
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+.sidebar {
+  display: flex; flex-direction: column;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  height: 100vh;
+}
+.sidebar-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sidebar-brand {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.sidebar-pulse { transform: scale(.8); transform-origin: left center; }
+.sidebar-brand-text { display:flex; flex-direction:column; gap:1px; }
+.sidebar-brand-name {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--text-primary); line-height: 1;
+}
+.sidebar-brand-sub {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  color: var(--text-muted); text-transform: uppercase; line-height: 1;
+}
+.btn-icon-nav {
+  background: none; border: none; color: var(--text-muted);
+  padding: var(--space-1); border-radius: var(--radius);
+  min-width: var(--space-11); min-height: var(--space-11);
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.btn-icon-nav:hover { color: var(--text-primary); background: var(--surface-hover); }
 
-    <div class="section-label-row">OPERAÇÕES</div>
+/* Shift bar */
+.shift-bar { padding: var(--space-3) var(--space-4); flex-shrink: 0; }
+.shift-bar-idle, .shift-bar-active {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.shift-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.shift-dot-on  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.shift-dot-off { background: var(--text-muted); }
+.shift-label {
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  font-family: var(--font-mono); letter-spacing: 0.04em; flex: 1;
+}
+.shift-clock {
+  font-size: 11px; color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.shift-idle-text {
+  font-size: 11px; color: var(--text-muted); flex: 1;
+}
+.btn-shift-open {
+  font-size: 11px; padding: 3px 10px;
+  background: var(--accent-dim); color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 20px;
+  font-weight: 600; transition: all var(--dur-fast);
+}
+.btn-shift-open:hover { background: var(--accent); color: var(--bg); }
 
-    <!-- Lista de operações -->
-    <div id="ops-lista" class="ops-lista"></div>
+/* Encerrar turno */
+#btn-encerrar-wrap {
+  padding: 0 var(--space-4) var(--space-2);
+  flex-shrink: 0;
+}
+.btn-encerrar {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  width: 100%; height: 32px; padding: 0 var(--space-3);
+  background: var(--danger-dim); color: var(--danger);
+  border: 1px solid var(--danger); border-radius: var(--radius);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  transition: all var(--dur-fast);
+}
+.btn-encerrar:hover { background: var(--danger); color: #fff; }
 
-    <!-- Footer do usuário -->
-    <div class="sidebar-user">
-      <div class="avatar" id="user-avatar" aria-hidden="true">CM</div>
-      <div class="user-info">
-        <span id="user-name" class="user-name">Cristiano Miranda</span>
-        <span id="user-role" class="user-role-badge">SUPERVISOR</span>
-      </div>
-      <button class="btn-icon-nav" onclick="NIT_PLANOP.Auth.logout()"
-        title="Sair" aria-label="Sair">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
-        </svg>
-      </button>
-    </div>
-  </aside>
+/* Supervisão section */
+.sidebar-section { border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sidebar-section-toggle {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 100%; padding: var(--space-2) var(--space-4);
+  background: none; border: none;
+  color: var(--text-muted); text-align: left;
+  transition: color var(--dur-fast);
+}
+.sidebar-section-toggle:hover { color: var(--text-secondary); }
+.section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; flex: 1;
+}
+.section-count {
+  font-size: 10px; font-family: var(--font-mono); font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  padding: 1px 7px; border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.chevron {
+  transition: transform var(--dur-fast);
+  color: var(--text-muted);
+}
+.sidebar-section-toggle[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+.section-body {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  animation: slideDown var(--dur-normal) var(--ease-out);
+}
+@keyframes slideDown {
+  from { opacity:0; transform:translateY(-6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.supervisao-lista { display: flex; flex-direction: column; gap: var(--space-2); }
+.supervisao-membro {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.supervisao-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--success);
+}
+.supervisao-nome {
+  flex: 1; font-size: 12px; color: var(--text-primary); font-weight: 500;
+}
+.supervisao-cargo {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  color: var(--text-muted); background: var(--surface-hover);
+  padding: 1px 5px; border-radius: 3px;
+}
+.supervisao-fixo-icon {
+  color: var(--accent); opacity: 0.6;
+  font-size: 10px; margin-left: 2px;
+}
+.btn-add-membro {
+  display: flex; align-items: center;
+  background: none; border: none;
+  color: var(--accent); font-size: 11px; font-weight: 600;
+  padding: var(--space-2) 0;
+  transition: opacity var(--dur-fast);
+}
+.btn-add-membro:hover { opacity: 0.8; }
+.supervisao-cargo-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 2px 7px; border-radius: 4px;
+  background: var(--bg-card); border: 1px solid var(--border-strong);
+  color: var(--text-tertiary); text-transform: uppercase;
+  flex-shrink: 0;
+}
+.supervisao-cargo-badge.cargo-sup {
+  background: var(--accent-dim); border-color: var(--accent);
+  color: var(--accent);
+}
+.supervisao-remove-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 14px; cursor: pointer; padding: 0 2px; line-height: 1;
+  opacity: 0.5; transition: opacity var(--dur-fast), color var(--dur-fast);
+  min-width: 20px; display: flex; align-items: center; justify-content: center;
+}
+.supervisao-remove-btn:hover { opacity: 1; color: var(--danger); }
+.btn-salvar-padrao {
+  display: block; background: none; border: none;
+  color: var(--accent); font-size: 11px; font-weight: 600;
+  padding: var(--space-2) 0; cursor: pointer;
+  opacity: 0.8; transition: opacity var(--dur-fast);
+  text-align: left;
+}
+.btn-salvar-padrao:hover { opacity: 1; }
 
-  <!-- ── COLUNA 2: PAINEL PRINCIPAL ───────────────────── -->
-  <main class="main-panel" id="main-panel">
+/* Nova operação */
+.sidebar-nova-op {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.btn-nova-op {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 34px;
+  background: none; color: var(--accent);
+  border: 1px dashed var(--accent); border-radius: var(--radius);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+  transition: all var(--dur-fast);
+}
+.btn-nova-op:hover { background: var(--accent-dim); }
+.nova-op-form {
+  margin-top: var(--space-3);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  animation: slideDown var(--dur-normal) var(--ease-out);
+}
+.form-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-tertiary);
+  display: block; margin-bottom: 3px;
+}
+.form-hint {
+  font-size: 10px; font-weight: 400; color: var(--text-muted);
+  text-transform: none; letter-spacing: 0; margin-left: 4px;
+}
+.input-sm {
+  width: 100%; height: 32px; padding: 0 var(--space-3);
+  background: var(--bg-card); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); color: var(--text-primary);
+  font-size: 12px;
+  transition: border-color var(--dur-fast);
+}
+.input-sm:focus { outline: none; border-color: var(--accent); }
+.input-sm::placeholder { color: var(--text-muted); }
+.select-sm {
+  width: 100%; height: 32px; padding: 0 var(--space-3);
+  background: var(--bg-card); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); color: var(--text-primary);
+  font-size: 12px; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.select-sm:focus { outline: none; border-color: var(--accent); }
+.select-sm option { background: var(--bg-surface); }
+.nova-op-footer {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
+  margin-top: var(--space-1);
+}
+.btn-ghost-sm {
+  height: 30px; padding: 0 var(--space-3);
+  background: none; border: 1px solid var(--border-strong);
+  border-radius: var(--radius); color: var(--text-secondary);
+  font-size: 11px; font-weight: 600;
+  transition: all var(--dur-fast);
+}
+.btn-ghost-sm:hover { border-color: var(--text-secondary); }
+.btn-accent-sm {
+  height: 30px; padding: 0 var(--space-3);
+  background: var(--accent); border: none;
+  border-radius: var(--radius); color: #0d1826;
+  font-size: 11px; font-weight: 700;
+  transition: opacity var(--dur-fast);
+}
+.btn-accent-sm:hover { opacity: .85; }
 
-    <!-- Indicador de conexão -->
-    <div id="conexao-bar" class="conexao-bar conexao-offline">
-      <span id="conexao-dot-main" class="conexao-dot"></span>
-      <span id="conexao-label-main">Conectando...</span>
-    </div>
+/* Combo drop */
+.combo-wrap { position: relative; }
+.combo-drop {
+  display: none;
+  position: fixed; z-index: var(--z-dropdown);
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); max-height: 200px; overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.combo-drop.open { display: block; }
+.combo-item {
+  padding: 8px 12px; font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; border-bottom: 1px solid var(--border);
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.combo-item:last-child { border-bottom: none; }
+.combo-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+.combo-empty {
+  padding: 10px 12px; font-size: 12px; color: var(--text-muted);
+  text-align: center; font-style: italic;
+}
 
-    <!-- Conteúdo dinâmico (renderizado por JS) -->
-    <div id="main-content"></div>
-  </main>
+/* Sidebar search */
+.sidebar-search {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sidebar-search svg { color: var(--text-muted); flex-shrink: 0; }
+.sidebar-search input {
+  flex: 1; background: none; border: none;
+  color: var(--text-secondary); font-size: 12px;
+}
+.sidebar-search input::placeholder { color: var(--text-muted); }
+.sidebar-search input:focus { outline: none; }
+.sidebar-busca-clear {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; padding: 0 2px; line-height: 1;
+  transition: color var(--dur-fast);
+}
+.sidebar-busca-clear:hover { color: var(--text-primary); }
 
-  <!-- ── COLUNA 3: PAINEL DIREITO ──────────────────────── -->
-  <aside class="right-panel" id="right-panel">
-    <div class="right-header">
-      <span class="section-label">EFETIVO</span>
-      <button class="btn-cadastrar-pessoa" onclick="NIT_PLANOP.UI.abrirCadastrarPessoa()"
-        title="Cadastrar novo orientador">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
-    </div>
+.section-label-row {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: var(--space-2) var(--space-4) var(--space-1);
+  flex-shrink: 0;
+}
 
-    <!-- Totais do efetivo -->
-    <div class="efetivo-totais" id="efetivo-totais"></div>
+/* Ops lista */
+.ops-lista { flex: 1; overflow-y: auto; }
+.ops-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 11px var(--space-4);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+  border-bottom: 1px solid var(--border);
+}
+.ops-item:hover { background: var(--surface-hover); }
+.ops-item.active {
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
+}
+.ops-item-icon {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: transparent;
+  display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+.ops-item.active .ops-item-icon { color: var(--accent); }
+.ops-item:hover .ops-item-icon  { color: var(--text-secondary); }
+.ops-item-body { flex: 1; min-width: 0; }
+.ops-item-name {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ops-item-sub {
+  /* Contraste 6.97:1 sobre --bg-surface — passa WCAG AA */
+  font-size: 11px; color: var(--text-tertiary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.ops-status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.ops-status-dot.verde    { background: var(--success); }
+.ops-status-dot.amarelo  { background: var(--warning); }
+.ops-status-dot.vermelho { background: var(--danger); }
 
-    <p class="right-hint">Arraste para o QRU ou clique em + Adicionar</p>
-    <div class="right-search">
-      <input id="right-busca" type="text" placeholder="Filtrar..."
-        oninput="NIT_PLANOP.UI.filtrarStaff(this.value)">
-    </div>
-    <div id="staff-lista" class="staff-lista"></div>
-  </aside>
+/* Sidebar user */
+.sidebar-user {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  margin-top: auto;
+}
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent); color: #0d1826;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name {
+  display: block; font-size: 12px; font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.user-role-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--text-tertiary); text-transform: uppercase;
+}
 
-</div>
+/* ── PAINEL PRINCIPAL ────────────────────────────────────── */
+.main-panel {
+  display: flex; flex-direction: column;
+  overflow: hidden; height: 100vh;
+  background: var(--bg);
+}
+.conexao-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px var(--space-4); font-size: 11px; font-weight: 600;
+  transition: all var(--dur-normal);
+}
+.conexao-bar.conexao-online {
+  background: var(--success-dim); color: var(--success);
+}
+.conexao-bar.conexao-offline {
+  background: var(--danger-dim); color: var(--danger);
+}
+.conexao-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: currentColor;
+}
+#main-content {
+  flex: 1; overflow-y: auto;
+  padding: var(--space-5);
+}
 
-<!-- ═══════════════════════════════════════════════════════
-     FIREBASE
-═══════════════════════════════════════════════════════ -->
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
-<script src="planop.js"></script>
+/* ── TOP BAR DA OPERAÇÃO ─────────────────────────────────── */
+.op-topbar {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-5);
+}
+.op-topbar-icon {
+  width: 44px; height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-dim);
+  border: 1px solid rgba(88,166,255,0.2);
+  border-radius: 10px;
+  color: var(--accent);
+}
+.op-topbar-info { flex: 1; min-width: 0; }
+.op-topbar-name {
+  font-size: 20px; font-weight: 700; color: var(--text-primary);
+  display: flex; align-items: center; gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.op-topbar-sub {
+  font-size: 12px; color: var(--text-tertiary); margin-top: 3px;
+}
+.op-topbar-right {
+  display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0;
+}
+.topbar-date {
+  font-size: 12px; color: var(--text-muted);
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 4px 10px;
+}
+.topbar-clock {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 600;
+  color: var(--text-secondary); min-width: 42px; text-align: right;
+}
 
-</body>
-</html>
+/* Modo Executar / Planejar — dois botões independentes */
+.modo-btns {
+  display: flex; gap: var(--space-2);
+}
+.modo-btn {
+  display: flex; align-items: center; gap: 5px;
+  height: 32px; padding: 0 var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--text-muted); cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.modo-btn:hover { border-color: var(--accent); color: var(--accent); }
+.modo-btn-active {
+  background: var(--accent); border-color: var(--accent);
+  color: #0d1826;
+}
+.modo-btn-active:hover { opacity: 0.9; border-color: var(--accent); color: #0d1826; }
+
+/* Badge ATIVO */
+.badge-ativo {
+  font-size: 10px; font-weight: 700; padding: 2px 8px;
+  border-radius: 20px; background: var(--success-dim);
+  color: var(--success); border: 1px solid var(--success);
+  letter-spacing: 0.06em;
+}
+
+/* Métricas */
+/* QRU header */
+.qru-section-header {
+  display: flex; align-items: center; gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.qru-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.qru-search {
+  flex: 1; height: 28px; padding: 0 var(--space-3);
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-secondary);
+  font-size: 11px;
+}
+.qru-search:focus { outline: none; border-color: var(--accent); }
+.qru-search::placeholder { color: var(--text-muted); }
+.btn-expandir {
+  height: 28px; padding: 0 10px;
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-muted);
+  font-size: 10px; font-weight: 600;
+  transition: all var(--dur-fast);
+}
+.btn-expandir:hover { border-color: var(--border-strong); color: var(--text-secondary); }
+.btn-add-posto {
+  height: 28px; padding: 0 10px;
+  background: var(--accent); border: none;
+  border-radius: var(--radius); color: #0d1826;
+  font-size: 11px; font-weight: 700;
+  transition: opacity var(--dur-fast);
+}
+.btn-add-posto:hover { opacity: .85; }
+
+/* QRU cards */
+.qrus-lista { display: flex; flex-direction: column; gap: var(--space-4); }
+.qru-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  /* overflow visible — o menu ··· (position absolute) precisa escapar do card */
+  overflow: visible;
+  border-left-width: 3px;
+  position: relative;
+}
+.qru-card-header { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.qru-card:not(.expanded) .qru-card-header { border-radius: var(--radius-lg); }
+.qru-card.status-vazio    { border-left-color: var(--danger); }
+.qru-card.status-parcial  { border-left-color: var(--warning); }
+.qru-card.status-completo { border-left-color: var(--success); }
+
+.qru-card-header {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+}
+.qru-card-header:hover { background: var(--surface-hover); }
+.qru-num {
+  font-family: var(--font-mono); font-size: 12px;
+  font-weight: 700; color: var(--text-muted);
+  background: var(--bg-card); border-radius: 4px;
+  padding: 2px 7px; flex-shrink: 0;
+}
+.qru-addr-wrap { flex: 1; min-width: 0; }
+.qru-addr {
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
+  letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qru-sub {
+  font-size: 11px; color: var(--text-tertiary); margin-top: 2px;
+}
+.qru-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 10px;
+  border-radius: 20px; flex-shrink: 0; white-space: nowrap;
+}
+.qru-badge.vazio {
+  background: var(--danger-dim); color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.qru-badge.parcial {
+  background: var(--warning-dim); color: var(--warning);
+  border: 1px solid var(--warning);
+}
+.qru-badge.completo {
+  background: var(--success-dim); color: var(--success);
+  border: 1px solid var(--success);
+}
+.qru-chevron {
+  color: var(--text-muted);
+  transition: transform var(--dur-fast);
+  flex-shrink: 0;
+}
+.qru-card.expanded .qru-chevron { transform: rotate(180deg); }
+.btn-qru-menu {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; padding: 0 2px; flex-shrink: 0;
+  min-width: var(--space-11); min-height: var(--space-11);
+  display: flex; align-items: center; justify-content: center;
+  transition: color var(--dur-fast);
+}
+.btn-qru-menu:hover { color: var(--text-primary); }
+
+/* QRU body */
+.qru-body {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border);
+  display: none;
+}
+.qru-card.expanded .qru-body { display: block; }
+
+.orientadores-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+/* Chip de orientador designado — padrão tipográfico Lovable */
+.orientadores-chips {
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  margin-bottom: var(--space-3); min-height: 28px;
+}
+.orientador-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.chip-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; flex-shrink: 0;
+  color: #0d1826; font-family: var(--font-ui);
+  font-feature-settings: normal;
+}
+.chip-nome {
+  /* Inter 500, title case, text-primary, letter-spacing 0 */
+  font-size: 13px; font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+.chip-cargo {
+  /* Inter 600, UPPERCASE, text-muted, leve tracking */
+  font-size: 10px; font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.orientador-chip-remove {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 14px; line-height: 1;
+  padding: 0 0 0 2px; opacity: 0.7;
+  transition: opacity var(--dur-fast), color var(--dur-fast);
+  display: flex; align-items: center;
+}
+.orientador-chip-remove:hover { opacity: 1; color: var(--danger); }
+
+/* Dropdown add orientador */
+.add-orientador-wrap { position: relative; }
+.btn-add-orientador {
+  display: inline-flex; align-items: center; gap: 5px;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: 1px dashed var(--border-strong);
+  border-radius: 20px; color: var(--text-tertiary);
+  font-size: 11px; font-weight: 600; padding: 4px 10px;
+  transition: all var(--dur-fast);
+}
+.btn-add-orientador:hover {
+  border-color: var(--accent); color: var(--accent);
+}
+.orientador-drop {
+  display: none;
+  position: fixed; z-index: var(--z-dropdown);
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); min-width: 220px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  animation: fadeIn var(--dur-fast);
+}
+.orientador-drop.open { display: block; }
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(-4px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.orientador-drop-search {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.orientador-drop-search input {
+  width: 100%; background: none; border: none;
+  color: var(--text-primary); font-size: 12px;
+}
+.orientador-drop-search input:focus { outline: none; }
+.orientador-drop-list { max-height: 200px; overflow-y: auto; }
+.orientador-drop-item {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 8px var(--space-3);
+  cursor: pointer; font-size: 12px; color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.orientador-drop-item:last-child { border-bottom: none; }
+.orientador-drop-item:hover {
+  background: var(--surface-hover); color: var(--text-primary);
+}
+.orientador-drop-item.disabled {
+  opacity: 0.4; cursor: not-allowed; pointer-events: none;
+}
+.drop-avail-dot {
+  width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+}
+.drop-avail-dot.on  { background: var(--success); }
+.drop-avail-dot.off { background: var(--text-muted); }
+.drop-item-nome { flex: 1; font-weight: 500; }
+.drop-item-cargo {
+  font-size: 10px; color: var(--text-tertiary); font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* Detalhes do posto */
+.detalhes-toggle {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: none; margin-top: var(--space-3);
+  font-size: 12px; color: var(--text-tertiary); cursor: pointer;
+  padding: 4px 0; transition: color var(--dur-fast);
+  font-weight: 500;
+}
+.detalhes-toggle:hover { color: var(--text-secondary); }
+.detalhes-body {
+  display: none;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.detalhes-body.open { display: block; }
+.detalhes-row {
+  display: flex; align-items: baseline; gap: var(--space-3);
+  font-size: 12px; margin-bottom: var(--space-2);
+}
+.detalhes-key { color: var(--text-muted); min-width: 90px; }
+.detalhes-val { color: var(--text-secondary); }
+.detalhes-obs-input {
+  width: 100%; background: none; border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 12px;
+  padding: 2px 0; margin-top: var(--space-1);
+  transition: border-color var(--dur-fast);
+}
+.detalhes-obs-input:focus {
+  outline: none; border-color: var(--accent);
+}
+.detalhes-obs-input::placeholder { color: var(--text-muted); }
+
+/* Fotos */
+.fotos-section { margin-top: var(--space-4); }
+.fotos-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}
+.fotos-grid { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.foto-ref-wrap { position: relative; }
+.foto-ref {
+  width: 120px; height: 80px; border-radius: var(--radius);
+  object-fit: cover; display: block;
+}
+.foto-placeholder {
+  width: 120px; height: 80px; border-radius: var(--radius);
+  border: 1px dashed var(--border-strong);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer;
+  color: var(--text-muted); font-size: 10px;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.foto-placeholder:hover { border-color: var(--accent); color: var(--accent); }
+.foto-placeholder svg { opacity: 0.5; }
+.foto-label-sub {
+  font-size: 10px; color: var(--text-tertiary);
+  text-align: center; margin-top: 4px;
+}
+.fotos-registros { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.foto-registro-wrap { position: relative; }
+.foto-registro {
+  width: 60px; height: 60px; border-radius: var(--radius);
+  object-fit: cover; display: block;
+}
+.foto-ts {
+  position: absolute; bottom: 2px; left: 2px;
+  font-size: 10px; color: #fff; background: rgba(0,0,0,.7);
+  padding: 2px 5px; border-radius: 3px;
+  font-family: var(--font-mono);
+}
+.btn-add-registro {
+  width: 60px; height: 60px; border-radius: var(--radius);
+  border: 1px dashed var(--border-strong);
+  background: none; color: var(--text-muted);
+  font-size: 20px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all var(--dur-fast);
+}
+.btn-add-registro:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Estado vazio / sem turno */
+.estado-vazio {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; text-align: center;
+  color: var(--text-muted); gap: var(--space-4);
+  padding: var(--space-6);
+}
+.estado-vazio-icon { font-size: 48px; opacity: .3; }
+.estado-vazio-titulo {
+  font-size: 16px; font-weight: 600; color: var(--text-secondary);
+}
+.estado-vazio-sub { font-size: 12px; line-height: 1.6; }
+.btn-abrir-turno-main {
+  height: 40px; padding: 0 var(--space-5);
+  background: var(--accent); border: none;
+  border-radius: var(--radius); color: #0d1826;
+  font-size: 13px; font-weight: 700;
+  transition: opacity var(--dur-fast);
+}
+.btn-abrir-turno-main:hover { opacity: .85; }
+
+/* ── PAINEL DIREITO ──────────────────────────────────────── */
+.right-panel {
+  display: flex; flex-direction: column;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  height: 100vh; overflow: hidden;
+}
+.right-header {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.right-hint {
+  font-size: 10px; color: var(--text-muted);
+  padding: var(--space-2) var(--space-4); line-height: 1.5;
+  flex-shrink: 0;
+}
+.right-search {
+  padding: 0 var(--space-4) var(--space-2); flex-shrink: 0;
+}
+.right-search input {
+  width: 100%; height: 28px; padding: 0 var(--space-3);
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-secondary);
+  font-size: 11px;
+}
+.right-search input:focus { outline: none; border-color: var(--accent); }
+.right-search input::placeholder { color: var(--text-muted); }
+.staff-lista { flex: 1; overflow-y: auto; }
+/* Right panel — padrão Lovable ──────────────────────────── */
+.staff-group-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: 10px var(--space-4) 6px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+.staff-group-label span {
+  font-size: 10px; font-weight: 700; letter-spacing: 0;
+  background: var(--bg-card); padding: 1px 7px;
+  border-radius: 10px; color: var(--text-muted);
+}
+.disponivel-label { color: var(--success); }
+.disponivel-label span { color: var(--success); background: var(--success-dim); }
+.warning-label  { color: var(--warning); }
+.warning-label span  { color: var(--warning); background: var(--warning-dim); }
+.danger-label   { color: var(--danger); }
+.danger-label span   { color: var(--danger); background: var(--danger-dim); }
+
+.staff-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px var(--space-4);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  border-bottom: 1px solid var(--border);
+}
+.staff-row:hover { background: var(--surface-hover); }
+.staff-row.no-drag { cursor: default; }
+.staff-row.dragging { opacity: 0.4; }
+
+/* Indisponíveis — levemente opacos mas clicáveis */
+.staff-row.indisponivel { opacity: 0.65; }
+.staff-row.indisponivel:hover { opacity: 1; background: var(--surface-hover); }
+.staff-row.escalado { opacity: 0.55; cursor: default; }
+
+.staff-avatar {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #0d1826;
+}
+.staff-info { flex: 1; min-width: 0; }
+.staff-nome {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  /* Até 2 linhas — nomes brasileiros longos cabem sem truncar abruptamente */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+}
+.staff-sub-line {
+  font-size: 11px; color: var(--text-tertiary); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.staff-sub-line.has-motivo { color: var(--warning); font-style: italic; }
+
+.staff-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.staff-dot.disponivel   { background: var(--success); }
+.staff-dot.escalado     { background: var(--accent); }
+.staff-dot.indisponivel { background: var(--warning); }
+.staff-dot.ausente      { background: var(--danger); }
+
+/* Popover de status com motivo */
+.status-popover {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  animation: fadeIn var(--dur-fast);
+}
+.sp-titulo {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--border); margin-bottom: var(--space-1);
+}
+.sp-opcoes { display: flex; flex-direction: column; gap: 2px; }
+.sp-opt {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 7px var(--space-2); border-radius: var(--radius);
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--text-secondary); text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast); width: 100%;
+}
+.sp-opt:hover { background: var(--surface-hover); color: var(--text-primary); }
+.sp-opt.active { color: var(--text-primary); font-weight: 600; }
+.sp-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.sp-motivos {
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-1); padding-top: var(--space-1);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sp-motivo-opt {
+  padding: 6px var(--space-2) 6px 28px;
+  border-radius: var(--radius); background: none; border: none;
+  cursor: pointer; font-size: 11px; color: var(--text-muted);
+  text-align: left; width: 100%;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.sp-motivo-opt:hover { background: var(--surface-hover); color: var(--text-primary); }
+.sp-motivo-opt.active { color: var(--warning); font-weight: 600; }
+
+
+/* Menus de contexto — operação (sidebar) e posto (card) */
+.ops-item-menu-wrap { position: relative; flex-shrink: 0; }
+.btn-ops-menu {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; padding: 4px 6px; cursor: pointer;
+  border-radius: var(--radius); line-height: 1;
+  transition: color var(--dur-fast), background var(--dur-fast);
+  min-width: 28px; min-height: 28px;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-ops-menu:hover { color: var(--text-primary); background: var(--surface-hover); }
+.ops-ctx-menu {
+  position: absolute; right: 0; top: calc(100% + 4px);
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: var(--z-dropdown); overflow: hidden;
+}
+.ops-ctx-menu button {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 100%; padding: 9px 14px;
+  background: none; border: none; border-bottom: 1px solid var(--border);
+  font-size: 12px; color: var(--text-secondary); cursor: pointer; text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.ops-ctx-menu button:last-child { border-bottom: none; }
+.ops-ctx-menu button:hover { background: var(--surface-hover); color: var(--text-primary); }
+.ops-ctx-menu button.danger { color: var(--danger); }
+.ops-ctx-menu button.danger:hover { background: var(--danger-dim); }
+.qru-card-header { position: relative; }
+
+/* Drop zone ativa nos QRU cards durante drag */
+.qru-card.drag-over {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-dim);
+}
+
+/* ── MODO CAMPO ─────────────────────────────────────────── */
+.campo-header {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface); border-bottom: 1px solid var(--border);
+}
+.campo-brand { display: flex; align-items: center; gap: var(--space-2); }
+.brand-pill {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--accent-dim); border: 1px solid var(--accent);
+  color: var(--accent); font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+}
+.campo-brand-name {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+.campo-turno-badge {
+  font-size: 10px; font-weight: 600; padding: 3px 10px;
+  border-radius: 20px; font-family: var(--font-mono);
+}
+.campo-clock {
+  margin-left: auto; font-size: 14px; font-weight: 700;
+  font-family: var(--font-mono); color: var(--text-secondary);
+}
+.campo-main { padding: var(--space-4); max-width: 600px; margin: 0 auto; }
+.campo-search-label {
+  display: block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: var(--space-2);
+}
+.campo-search-row { position: relative; display: flex; align-items: center; }
+.campo-input {
+  width: 100%; height: 52px; padding: 0 var(--space-11) 0 var(--space-4);
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg); color: var(--text-primary);
+  font-size: 16px; font-weight: 500;
+  transition: border-color var(--dur-fast);
+}
+.campo-input:focus { outline: none; border-color: var(--accent); }
+.campo-input::placeholder { color: var(--text-muted); font-size: 14px; }
+.campo-clear {
+  position: absolute; right: var(--space-4);
+  background: none; border: none; color: var(--text-muted);
+  font-size: 20px; cursor: pointer;
+  transition: color var(--dur-fast);
+}
+.campo-clear:hover { color: var(--text-primary); }
+.campo-hint {
+  font-size: 11px; color: var(--text-muted);
+  text-align: center; margin-top: var(--space-2);
+}
+.campo-resultado { margin-top: var(--space-4); }
+.campo-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.campo-recurso-header {
+  padding: var(--space-4); border-bottom: 1px solid var(--border);
+}
+.campo-nome {
+  font-size: 16px; font-weight: 700; color: var(--text-primary);
+}
+.campo-mat { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.campo-zona-onde {
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: rgba(88,166,255,0.03);
+}
+.campo-zona-onde-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+  color: var(--text-muted); text-transform: uppercase;
+  margin-bottom: var(--space-2);
+}
+.campo-qth-valor {
+  font-size: 18px; font-weight: 700; color: var(--text-primary);
+  line-height: 1.25; margin-bottom: var(--space-1);
+}
+.campo-qth-bairro {
+  font-size: 12px; color: var(--text-secondary);
+  font-family: var(--font-mono); letter-spacing: 0.04em;
+  margin-bottom: var(--space-3);
+}
+.btn-maps {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 44px; padding: 0 var(--space-4);
+  background: var(--accent-dim); color: var(--accent);
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  font-size: 13px; font-weight: 600; text-decoration: none;
+  transition: all var(--dur-fast);
+}
+.btn-maps:hover {
+  background: var(--accent); color: #0d1826; text-decoration: none;
+}
+.campo-zona-oque { padding: var(--space-3) var(--space-4) var(--space-4); }
+.campo-qtu-num {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--accent); margin-bottom: var(--space-2);
+  text-transform: uppercase;
+}
+.campo-acao-badge {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; color: var(--warning);
+  background: var(--warning-dim); padding: 3px 10px;
+  border-radius: 4px; margin-bottom: var(--space-2);
+}
+.campo-op-nome { font-size: 12px; color: var(--text-secondary); }
+.campo-supervisor {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-muted);
+}
+.campo-tel {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--success); font-size: 13px; font-weight: 600;
+  text-decoration: none;
+}
+.campo-turno-info {
+  padding: 8px var(--space-4);
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-muted); letter-spacing: 0.06em;
+  text-align: center; border-top: 1px solid var(--border);
+}
+.campo-footer {
+  display: flex; justify-content: space-between;
+  padding: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-muted);
+}
+.campo-footer-link {
+  color: var(--text-muted); text-decoration: none;
+  transition: color var(--dur-fast);
+}
+.campo-footer-link:hover { color: var(--text-secondary); }
+.campo-footer-ver { color: var(--text-muted); }
+
+/* ── TOAST ───────────────────────────────────────────────── */
+#toast-container {
+  position: fixed; bottom: var(--space-5); right: var(--space-5);
+  z-index: var(--z-toast); display: flex;
+  flex-direction: column; gap: var(--space-2);
+}
+.toast {
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius);
+  font-size: 12px; font-weight: 600; max-width: 300px;
+  animation: toastIn var(--dur-normal) var(--ease-out);
+}
+@keyframes toastIn {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.toast.info    { background:#1a2744; border:1px solid var(--accent);  color:var(--accent); }
+.toast.success { background:#112b1e; border:1px solid var(--success); color:var(--success); }
+.toast.warning { background:#2b2010; border:1px solid var(--warning); color:var(--warning); }
+.toast.danger  { background:#2b1010; border:1px solid var(--danger);  color:var(--danger); }
+
+/* ── RESPONSIVE (mobile) ─────────────────────────────────── */
+/* Estado de foco via teclado no combo */
+.combo-item-focused {
+  background: var(--accent-dim) !important;
+  color: var(--text-primary) !important;
+}
+.combo-item-focused::before {
+  content: '▶';
+  margin-right: 6px;
+  font-size: 9px;
+  color: var(--accent);
+}
+
+/* Form de posto inline — abre dentro da lista de QRUs */
+.posto-form-inline {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+  animation: slideDown var(--dur-normal) var(--ease-out);
+}
+.posto-form-header {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: var(--space-1);
+}
+.posto-form-footer {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* Badge de aviso no label do orientador */
+.badge-warn-sm {
+  font-size: 10px; font-weight: 700; padding: 1px 6px;
+  border-radius: 20px; background: var(--warning-dim);
+  color: var(--warning); margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+  .app-dashboard {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+  .sidebar { display: none; }
+  .right-panel { display: none; }
+  .main-panel { height: calc(100vh - 56px); }
+  }
+
+/* Confirmação inline — substitui confirm() nativo */
+.encerrar-confirm {
+  padding: var(--space-3) var(--space-4);
+  background: var(--danger-dim);
+  border-top: 1px solid var(--danger);
+  animation: slideDown var(--dur-normal) var(--ease-out);
+}
+.encerrar-confirm-msg {
+  font-size: 11px; color: var(--danger); margin-bottom: var(--space-2);
+  line-height: 1.4;
+}
+.encerrar-confirm-btns {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
+}
+.btn-encerrar-ok {
+  height: 28px; padding: 0 var(--space-3);
+  background: var(--danger); border: none;
+  border-radius: var(--radius); color: #fff;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  transition: opacity var(--dur-fast);
+}
+.btn-encerrar-ok:hover { opacity: .85; }
+
+/* Inline confirm nos cards de QRU e ops */
+.inline-confirm {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-card); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); margin-top: var(--space-2);
+  font-size: 11px; color: var(--text-secondary);
+  animation: fadeIn var(--dur-fast);
+}
+.inline-confirm span { line-height: 1.4; }
+.inline-confirm > div {
+  display: flex; gap: var(--space-2); justify-content: flex-end;
+}
+.inline-confirm span { flex: 1; }
+.btn-danger-sm {
+  height: 26px; padding: 0 var(--space-3);
+  background: var(--danger); border: none;
+  border-radius: var(--radius); color: #fff;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  transition: opacity var(--dur-fast);
+}
+.btn-danger-sm:hover { opacity: .85; }
+
+/* Planejar desabilitado */
+.modo-btn-disabled {
+  opacity: 0.4; cursor: not-allowed;
+}
+.modo-btn-disabled:hover {
+  border-color: var(--border-strong) !important;
+  color: var(--text-muted) !important;
+  background: none !important;
+}
+
+/* Drag handle de volta */
+.staff-drag-handle {
+  color: var(--text-muted); font-size: 13px;
+  cursor: grab; flex-shrink: 0; letter-spacing: -2px;
+  opacity: 0.4; transition: opacity var(--dur-fast);
+}
+.staff-row:hover .staff-drag-handle { opacity: 0.9; }
+.staff-drag-placeholder { width: 13px; flex-shrink: 0; }
+
+/* Classes que estavam sem estilo (varredura de qualidade) */
+.campo-search-wrap {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.campo-qth-destaque {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-2);
+}
+
+
+/* ── LEGIBILIDADE PARA OPERADOR INICIANTE ─────────────────────────
+   Foco visível: iniciantes navegam por Tab e precisam ver onde estão */
+button:focus-visible, input:focus-visible, [onclick]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+input:focus {
+  border-color: var(--accent);
+}
+
+/* Números sempre tabulares em contexto de dados */
+/* Linha de leitura mais confortável em textos de apoio */
+.qru-sub, .staff-sub-line, .ops-item-sub, .op-topbar-sub {
+  line-height: 1.45;
+}
+
+/* ── SETTINGS MENU (gear icon) ───────────────────────── */
+.settings-wrap { position: relative; }
+.settings-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 200; overflow: hidden;
+  animation: fadeIn var(--dur-fast);
+}
+.settings-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: 10px 14px 4px;
+}
+.settings-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 9px 14px;
+  background: none; border: none; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.settings-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+.settings-item-danger { color: var(--danger); }
+.settings-item-danger:hover { background: var(--danger-dim); color: var(--danger); }
+.encerrar-confirm {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--danger);
+  background: var(--danger-dim);
+}
+
+/* ── PAINEL DIREITO — totais do efetivo ─────────────── */
+.right-header {
+  display: flex; align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  gap: var(--space-2);
+}
+.right-header .section-label { flex: 1; }
+.btn-cadastrar-pessoa {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent-dim); border: 1px solid var(--accent);
+  color: var(--accent); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--dur-fast);
+  flex-shrink: 0;
+}
+.btn-cadastrar-pessoa:hover { background: var(--accent); color: #0d1826; }
+
+.efetivo-totais { padding: var(--space-3) var(--space-4) 0; }
+.efetivo-total-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2); margin-bottom: var(--space-3);
+}
+.etotal-item {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: var(--space-2) var(--space-2);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px; text-align: center;
+}
+.etotal-num {
+  font-size: 18px; font-weight: 700; line-height: 1;
+  font-family: var(--font-mono); color: var(--text-primary);
+}
+.etotal-label {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.etotal-item.success .etotal-num { color: var(--success); }
+.etotal-item.accent  .etotal-num { color: var(--accent); }
+.etotal-item.warning .etotal-num { color: var(--warning); }
+
+/* Overlay de confirmação do encerrar turno */
+.encerrar-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 600;
+  animation: fadeIn var(--dur-fast);
+}
+.encerrar-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  min-width: 280px; max-width: 360px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+
+/* Dados cadastrais no popover de status */
+.sp-dados {
+  padding: var(--space-2) 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.sp-dado {
+  display: flex; align-items: baseline;
+  gap: var(--space-2); font-size: 11px;
+}
+.sp-dado-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+  min-width: 70px; flex-shrink: 0;
+}
+.sp-contato {
+  color: var(--accent); text-decoration: none; font-weight: 500;
+}
+.sp-contato:hover { text-decoration: underline; }
+.sp-vazio { color: var(--text-muted); }
+.sp-divider {
+  height: 1px; background: var(--border);
+  margin: var(--space-1) 0;
+}
+.sp-opt.warning { color: var(--warning); }
+.sp-opt.warning:hover { background: var(--warning-dim); }
+
+/* Editar pessoa — overlay modal */
+.editar-pessoa-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 600; animation: fadeIn var(--dur-fast);
+}
+.editar-pessoa-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  width: 320px; max-height: 90vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+.sp-edit-btn {
+  width: 100%; text-align: left;
+  border-top: 1px solid var(--border);
+}
+
+/* Textarea de observação */
+.textarea-obs {
+  resize: none;           /* não precisa de resize manual — cresce sozinha */
+  overflow: hidden;       /* esconde scrollbar durante o crescimento */
+  min-height: 36px;       /* mesma altura de um input-sm */
+  max-height: 200px;      /* limite para não dominar a tela */
+  font-family: var(--font-ui); font-size: 12px;
+  line-height: 1.5;
+  transition: height 0.1s ease;
+}
+.detalhes-obs-input.textarea-obs {
+  width: 100%; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text-primary); padding: 6px 8px;
+}
+
+/* Fix: pf-ori chips no form de posto */
+.pf-ori-chips {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px;
+}
+.pf-ori-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px 3px 4px;
+  background: var(--accent-dim); border: 1px solid var(--accent);
+  border-radius: 20px; font-size: 11px;
+}
+
+/* Fix 4: chip com falta */
+.orientador-chip.chip-falta {
+  opacity: 0.75;
+  border-color: var(--danger);
+  background: rgba(239,68,68,0.08);
+}
+.orientador-chip.chip-falta .chip-nome {
+  color: var(--danger);
+  text-decoration: line-through;
+  text-decoration-color: rgba(239,68,68,0.5);
+}
+.chip-cargo-falta {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+  color: var(--danger); text-transform: uppercase;
+  padding: 1px 4px; border-radius: 3px;
+  background: var(--danger-dim); border: 1px solid var(--danger);
+}
+.chip-falta-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; color: var(--warning); padding: 0 2px;
+  opacity: 0.7; transition: opacity var(--dur-fast);
+}
+.chip-falta-btn:hover { opacity: 1; }
+.chip-falta-btn.ativo { color: var(--text-muted); }
+
+/* Fix 2: foto placeholder com hint de paste */
+.foto-hint {
+  font-size: 9px; color: var(--text-muted);
+  display: block; margin-top: 2px;
+}
+.foto-placeholder { cursor: pointer; }
+.foto-placeholder:focus { outline: 2px solid var(--accent); }
+
+/* Fix 2: foto clicável */
+.foto-ref, .foto-registro {
+  cursor: zoom-in;
+  transition: opacity var(--dur-fast);
+}
+.foto-ref:hover, .foto-registro:hover { opacity: 0.85; }
+
+/* Fix 3: lightbox */
+.foto-zoom-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 900; cursor: zoom-out;
+  animation: fadeIn var(--dur-fast);
+}
+.foto-zoom-img {
+  max-width: 90vw; max-height: 90vh;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 60px rgba(0,0,0,0.8);
+}
+
+/* Foto de referência: container com ações hover */
+.foto-ref-container {
+  position: relative; display: inline-block;
+}
+.foto-ref-actions {
+  position: absolute; top: 4px; right: 4px;
+  display: flex; gap: 3px;
+  opacity: 0; transition: opacity var(--dur-fast);
+}
+.foto-ref-container:hover .foto-ref-actions { opacity: 1; }
+.foto-action-btn {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(13,24,38,0.85); border: none;
+  color: var(--text-secondary); cursor: pointer;
+  font-size: 12px; display: flex; align-items: center; justify-content: center;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.foto-action-btn:hover { background: var(--bg-surface); color: var(--text-primary); }
+.foto-action-btn.danger:hover { background: var(--danger); color: #fff; }
+
+/* Foto placeholder: drag-over state */
+.foto-placeholder.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* Botão remover em registros */
+.foto-reg-del {
+  position: absolute; top: 2px; right: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: rgba(13,24,38,0.8); border: none;
+  color: var(--danger); cursor: pointer; font-size: 10px;
+  display: none; align-items: center; justify-content: center;
+}
+.foto-registro-wrap:hover .foto-reg-del { display: flex; }
+.foto-registro-wrap { position: relative; }
+
+/* Wrapper do botão + para drag&drop */
+.btn-add-registro-wrap {
+  display: inline-flex;
+  border-radius: var(--radius);
+}
+.btn-add-registro-wrap.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+.btn-add-reg-icon { font-size: 18px; line-height: 1; }
+.btn-add-reg-hint {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--text-muted); display: block; margin-top: 2px;
+}
+.btn-add-registro {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 0;
+}
+
+/* ── Expansão inline de staff ────────────────────────── */
+.staff-row-wrap { border-bottom: 1px solid var(--border); }
+.staff-row-wrap .staff-row { border-bottom: none; }
+.staff-row-wrap.ativo .staff-row {
+  background: var(--accent-dim);
+  border-left: 2px solid var(--accent);
+}
+
+.staff-expand {
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  animation: slideDown var(--dur-normal) var(--ease-out);
+}
+
+.exp-dados {
+  display: flex; flex-direction: column; gap: 3px;
+  margin-bottom: var(--space-3);
+}
+.exp-dado {
+  display: flex; align-items: baseline;
+  gap: var(--space-2); font-size: 11px;
+}
+.exp-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+  min-width: 72px; flex-shrink: 0;
+}
+.exp-vazio { color: var(--text-muted); }
+.exp-acoes {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  align-items: center;
+}
+.exp-btn {
+  height: 28px; padding: 0 var(--space-3);
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); font-size: 11px; font-weight: 500;
+  color: var(--text-secondary); cursor: pointer;
+  transition: all var(--dur-fast); white-space: nowrap;
+}
+.exp-btn:hover { border-color: var(--accent); color: var(--accent); }
+.exp-btn-active { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+.exp-btn-warning { border-color: var(--warning); color: var(--warning); }
+.exp-btn-warning:hover { background: var(--warning-dim); }
+.exp-btn-edit { margin-left: auto; color: var(--text-muted); }
+.exp-btn-edit:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+.exp-motivos {
+  width: 100%; margin-top: 4px;
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.exp-motivo-btn {
+  height: 26px; padding: 0 10px;
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 10px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.exp-motivo-btn:hover, .exp-motivo-btn.active {
+  border-color: var(--warning); color: var(--warning); background: var(--warning-dim);
+}
+
+/* Chip selecionado (acordeão ativo) */
+.orientador-chip.chip-sel {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.orientador-chip { transition: all var(--dur-fast); }
+
+/* Painel de expansão abaixo dos chips */
+.chip-expand-panel {
+  margin: 6px 0 4px;
+  padding: var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  animation: slideDown var(--dur-fast) var(--ease-out);
+}
+.chip-exp-nome {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-secondary); margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.foto-zoom-hint {
+  position: absolute; bottom: 20px;
+  left: 50%; transform: translateX(-50%);
+  font-size: 11px; color: rgba(255,255,255,0.5);
+  pointer-events: none;
+}
+.foto-zoom-hint kbd {
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px; padding: 1px 5px;
+  font-family: var(--font-mono); font-size: 10px;
+}
+
+/* Badge composto — presentes · faltaram */
+.badge-falta {
+  color: var(--danger);
+  font-weight: 800;
+}
+.qru-badge.badge-composto {
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+/* ── SAVE INDICATOR (header) ─────────────────────────── */
+.save-indicator {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-left: auto; padding-right: var(--space-3);
+  font-size: 11px; color: var(--text-tertiary);
+}
+.save-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success); transition: background var(--dur-fast);
+}
+.save-dot.saving { background: var(--warning); animation: pulse-dot 1s infinite; }
+.save-dot.saved  { background: var(--success); }
+.save-dot.error  { background: var(--danger); }
+.save-dot.offline{ background: var(--danger); animation: pulse-dot 1.5s infinite; }
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; } 50% { opacity: 0.35; }
+}
+
+/* ── TOAST UNDO ──────────────────────────────────────── */
+.toast-undo {
+  display: flex; align-items: center; gap: var(--space-3);
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+}
+.toast-undo-btn {
+  background: none; border: none;
+  color: var(--accent); font-weight: 600; font-size: 12px;
+  cursor: pointer; padding: 2px 6px; border-radius: var(--radius);
+  white-space: nowrap;
+}
+.toast-undo-btn:hover { background: var(--accent-dim); }
+
+/* ── ZEBRA STRIPING — lista de efetivo (sutil) ───────── */
+.staff-row-wrap:nth-child(even) .staff-row {
+  background: rgba(255,255,255,0.014);
+}
+.staff-row-wrap:hover .staff-row {
+  background: var(--surface-hover);
+}
+.staff-row-wrap.ativo .staff-row {
+  background: var(--accent-dim);
+}
