@@ -1126,10 +1126,18 @@ const NIT_PLANOP = (() => {
     // ── QRU CARD
     _qruCardHTML(postoId, posto) {
       const orientadores = Object.entries(posto.orientadores||{});
-      const status = orientadores.length===0 ? 'vazio' : 'parcial';
-      const badgeText = status==='vazio'
+      const presentes = orientadores.filter(([,o]) => !o.faltou).length;
+      const faltaram  = orientadores.filter(([,o]) =>  o.faltou).length;
+      const total     = orientadores.length;
+      const status    = total === 0 ? 'vazio' : 'parcial';
+
+      // Badge composto: mostra presentes + faltaram separados
+      // "1 presente · 1 ⚠" é mais acionável que "2 pessoas"
+      const badgeText = status === 'vazio'
         ? 'Vazio'
-        : `${orientadores.length} pessoa${orientadores.length!==1?'s':''}`;
+        : faltaram > 0
+          ? `${presentes} presente${presentes!==1?'s':''}&nbsp;·&nbsp;<span class="badge-falta">${faltaram} ⚠</span>`
+          : `${total} pessoa${total!==1?'s':''}`;
 
       const chipsHTML = orientadores.map(([rId,ori]) => {
         const nome = ori.nome || rId;
@@ -1177,7 +1185,7 @@ const NIT_PLANOP = (() => {
             <div class="qru-addr">${esc(titleCase(posto.local||'—'))}</div>
             <div class="qru-sub">${[titleCase(posto.bairro||''), titleCase(posto.tipoAcao||'')].filter(Boolean).map(esc).join(' · ')}</div>
           </div>
-          <span class="qru-badge ${status}">${badgeText}</span>
+          <span class="qru-badge ${status} ${faltaram>0?'badge-composto':''}">${badgeText}</span>
           <svg class="qru-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="6 9 12 15 18 9"/>
@@ -1865,11 +1873,18 @@ const NIT_PLANOP = (() => {
 
       card.className = (card.className.replace(/\bstatus-\w+\b/g, '') + ` status-${status}`).trim();
 
+      const presentes2 = orientadores.filter(([,o]) => !o.faltou).length;
+      const faltaram2  = orientadores.filter(([,o]) =>  o.faltou).length;
       const badge = card.querySelector('.qru-badge');
       if (badge) {
-        badge.className   = `qru-badge ${status}`;
-        badge.textContent = status==='vazio' ? 'Vazio'
-          : `${orientadores.length} pessoa${orientadores.length!==1?'s':''}`;
+        badge.className = `qru-badge ${status}`;
+        if (status === 'vazio') {
+          badge.innerHTML = 'Vazio';
+        } else if (faltaram2 > 0) {
+          badge.innerHTML = `${presentes2} presente${presentes2!==1?'s':''}&nbsp;·&nbsp;<span class="badge-falta">${faltaram2} ⚠</span>`;
+        } else {
+          badge.innerHTML = `${orientadores.length} pessoa${orientadores.length!==1?'s':''}`;
+        }
       }
 
       const chipsDiv = card.querySelector('.orientadores-chips');
