@@ -22,8 +22,10 @@ const NIT_PLANOP = (() => {
     TURNOS: {
       manha: { label:'MANHÃ',  inicio:'05:30', fim:'11:30', minI:330,  minF:690  },
       tarde: { label:'TARDE',  inicio:'11:30', fim:'17:30', minI:690,  minF:1050 },
-      noite: { label:'NOITE',  inicio:'17:30', fim:'23:30', minI:1050, minF:1410 }
+      noite: { label:'NOITE',  inicio:'17:30', fim:'23:30', minI:1050, minF:1410 },
+      extraordinario: { label:'EXTRAORDINÁRIO', inicio:'', fim:'', minI:0, minF:0 }
     },
+    TURNOS_ORDEM: ['manha','tarde','noite','extraordinario'],
     TIPOS_ACAO: [
       'CONTROLE','BLOQUEIO','BLOQUEIO/DESVIO','BLOQUEIO/CONTROLE',
       'CONTROLE/COIBIR DIREITA','BLOQUEIO NA LARGADA','CONTROLE NA'
@@ -1081,44 +1083,103 @@ const NIT_PLANOP = (() => {
       const lista = $('ops-lista');
       if (!lista) return;
       const busca = S._buscaEquipes.toLowerCase().trim();
-      let ops = Object.entries(S.operacoes)
-        .filter(([,o]) => !S.escalaAtiva || o.escalaId === S.escalaAtiva)
+
+      // Todas as operações visíveis (filtro de busca)
+      let todasOps = Object.entries(S.operacoes)
         .sort(([,a],[,b]) => (a.ordem||0)-(b.ordem||0));
-      if (busca) ops = ops.filter(([,o]) =>
+      if (busca) todasOps = todasOps.filter(([,o]) =>
         (o.nome||'').toLowerCase().includes(busca) ||
         (o.bairro||'').toLowerCase().includes(busca));
-      if (!ops.length) {
-        lista.innerHTML = `<div style="padding:16px;font-size:11px;color:var(--text-muted);text-align:center">
-          ${S.escalaAtiva ? 'Nenhuma operação' : 'Abra um turno para ver as operações'}
-        </div>`;
-        return;
-      }
-      lista.innerHTML = ops.map(([id,op]) => {
-        const ativo    = S.operacaoSel === id ? 'active' : '';
-        const dot      = opDot(id);
-        const icon     = opIcon(op.tipoMissao);
-        const nPostos  = Object.values(S.postos).filter(p => p.operacaoId === id).length;
-        const sub      = [titleCase(op.bairro||''), nPostos + (nPostos === 1 ? ' posto' : ' postos')]
-          .filter(Boolean).join(' · ');
-        return `<div class="ops-item ${ativo}" onclick="NIT_PLANOP.UI.selOp('${id}')"
-          ${ativo ? 'aria-current="true"' : ''} role="button" tabindex="0">
-          <div class="ops-item-icon">${icon}</div>
-          <div class="ops-item-body">
-            <div class="ops-item-name">${esc(titleCase(op.bairro||op.nome||'—'))}</div>
-            <div class="ops-item-sub">${esc([titleCase(op.tipoMissao||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))}</div>
-          </div>
-          <span class="ops-status-dot ${dot}"></span>
-          ${canWrite() ? `
-          <div class="ops-item-menu-wrap" onclick="event.stopPropagation()">
-            <button class="btn-ops-menu" onclick="NIT_PLANOP.UI.toggleOpsMenu('${id}',event)"
-              aria-label="Opções da operação">···</button>
-            <div class="ops-ctx-menu hidden" id="ops-menu-${id}">
-              <button onclick="NIT_PLANOP.UI.abrirEditOp('${id}')">✏ Editar</button>
-              <button class="danger" onclick="NIT_PLANOP.Actions.deletarOp('${id}')">🗑 Deletar</button>
+
+      // Turno de uma operação: campo próprio, ou derivado da escala, ou 'extraordinario'
+      const turnoDaOp = (op) => {
+        if (op.turno && CFG.TURNOS[op.turno]) return op.turno;
+        const esc = S.escalas[op.escalaId];
+        if (esc?.turno && CFG.TURNOS[esc.turno]) return esc.turno;
+        return 'extraordinario';
+      };
+
+      // Agrupar por turno
+      const grupos = { manha:[], tarde:[], noite:[], extraordinario:[] };
+      todasOps.forEach(([id, op]) => {
+        grupos[turnoDaOp(op)].push([id, op]);
+      });
+
+      // Renderizar cada turno como um bloco
+      const html = CFG.TURNOS_ORDEM.map(turnoKey => {
+        const t   = CFG.TURNOS[turnoKey];
+        const ops = grupos[turnoKey];
+        const horarioTurno = t.inicio ? `${t.inicio}–${t.fim}` : '';
+        const isAtual = S.escalas[S.escalaAtiva]?.turno === turnoKey;
+
+        const opsHTML = ops.length ? ops.map(([id, op]) => {
+          const ativo   = S.operacaoSel === id ? 'active' : '';
+          const dot     = opDot(id);
+          const icon    = opIcon(op.tipoMissao);
+          const nPostos = Object.values(S.postos).filter(p => p.operacaoId === id).length;
+          const planejada = op.status === 'planejada';
+          const rendicao  = op.rendicao === true;
+
+          // Horário fora do padrão do turno → destacar como alerta
+          const horaOp = op.horario || '';
+          const foraDoPadrao = horaOp && t.inicio && horaOp !== t.inicio;
+          const horaHTML = horaOp
+            ? `<span class="ops-hora${foraDoPadrao?' fora-padrao':''}" ${foraDoPadrao?'title="Horário difere do padrão do turno"':''}>${esc(horaOp)}${foraDoPadrao?' ⚠':''}</span>`
+            : '';
+
+          const estadoBadge = planejada ? '<span class="ops-badge-plan">PLANEJADA</span>'
+            : rendicao ? '<span class="ops-badge-rend">RENDIÇÃO</span>' : '';
+
+          // Rótulo de recorrência/vigência
+          const recLabel = (() => {
+            const r = op.recorrencia;
+            if (!r || r === 'unica') return '';
+            const fmtData = d => d ? d.split('-').reverse().slice(0,2).join('/') : '';
+            if (r === 'diaria')  return op.dataFim ? `Diária · até ${fmtData(op.dataFim)}` : 'Diária · sem prazo';
+            if (r === 'anual')   return op.dataInicio ? `Anual · ${fmtData(op.dataInicio)}` : 'Anual';
+            if (r === 'semanal') {
+              const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+              const nomes = (op.diasSemana||[]).map(d => dias[d]).join(', ');
+              return op.dataFim ? `${nomes} · até ${fmtData(op.dataFim)}` : `${nomes} · sem prazo`;
+            }
+            return '';
+          })();
+          const recHTML = recLabel ? `<span class="ops-recorrencia">${esc(recLabel)}</span>` : '';
+
+          return `<div class="ops-item ${ativo} ${planejada?'ops-planejada':''} ${rendicao?'ops-rendicao':''}"
+            onclick="NIT_PLANOP.UI.selOp('${id}')"
+            ${ativo ? 'aria-current="true"' : ''} role="button" tabindex="0">
+            <div class="ops-item-icon">${icon}</div>
+            <div class="ops-item-body">
+              <div class="ops-item-name">${esc(titleCase(op.bairro||op.nome||'—'))} ${horaHTML}</div>
+              <div class="ops-item-sub">${esc([titleCase(op.tipoMissao||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))} ${estadoBadge}</div>
+              ${recHTML}
             </div>
-          </div>` : ''}
+            ${!planejada ? `<span class="ops-status-dot ${dot}"></span>` : ''}
+            ${canWrite() ? `
+            <div class="ops-item-menu-wrap" onclick="event.stopPropagation()">
+              <button class="btn-ops-menu" onclick="NIT_PLANOP.UI.toggleOpsMenu('${id}',event)"
+                aria-label="Opções da operação">···</button>
+              <div class="ops-ctx-menu hidden" id="ops-menu-${id}">
+                <button onclick="NIT_PLANOP.UI.abrirEditOp('${id}')">✏ Editar</button>
+                <button onclick="NIT_PLANOP.UI.abrirPlanejar('${id}')">📅 Planejar p/ outro turno</button>
+                <button class="danger" onclick="NIT_PLANOP.Actions.deletarOp('${id}')">🗑 Deletar</button>
+              </div>
+            </div>` : ''}
+          </div>`;
+        }).join('') : `<div class="turno-vazio">nenhuma operação</div>`;
+
+        return `<div class="turno-grupo ${isAtual?'turno-atual':''}">
+          <div class="turno-cabecalho">
+            <span class="turno-nome">${t.label}</span>
+            ${horarioTurno ? `<span class="turno-horario">${horarioTurno}</span>` : ''}
+            ${isAtual ? '<span class="turno-badge-atual">agora</span>' : ''}
+          </div>
+          <div class="turno-ops">${opsHTML}</div>
         </div>`;
       }).join('');
+
+      lista.innerHTML = html;
     },
 
     selOp(opId) {
@@ -1854,6 +1915,14 @@ const NIT_PLANOP = (() => {
         .forEach(m => m.classList.add('hidden'));
     },
 
+    abrirPlanejar(opId) {
+      UI._fecharTodosMenus();
+      const op = S.operacoes[opId];
+      if (!op) return;
+      // Etapa 4: modal de seleção de turno de destino + herança de estrutura
+      toast('Planejar para outro turno — em construção', 'info');
+    },
+
     toggleOpsMenu(opId, event) {
       event.stopPropagation();
       const menu = document.getElementById(`ops-menu-${opId}`);
@@ -2417,6 +2486,34 @@ const NIT_PLANOP = (() => {
     },
 
     // ── NOVA OPERAÇÃO (sidebar inline)
+    selRecorrencia(rec) {
+      const hidden = $('nop-recorrencia');
+      if (hidden) hidden.value = rec;
+      document.querySelectorAll('#nop-recorrencia-tabs .rec-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.rec === rec));
+      // Dias da semana só para semanal
+      $('nop-dias-semana')?.classList.toggle('hidden', rec !== 'semanal');
+      // Vigência para tudo que não é única
+      $('nop-vigencia')?.classList.toggle('hidden', rec === 'unica');
+      // Default: data início hoje
+      const di = $('nop-data-inicio');
+      if (di && !di.value && rec !== 'unica') {
+        di.value = new Date().toISOString().slice(0,10);
+      }
+    },
+
+    toggleDia(dia) {
+      window._nopDias = window._nopDias || new Set();
+      const btn = document.querySelector(`#nop-dias-semana .dia-chip[data-dia="${dia}"]`);
+      if (window._nopDias.has(dia)) { window._nopDias.delete(dia); btn?.classList.remove('active'); }
+      else { window._nopDias.add(dia); btn?.classList.add('active'); }
+    },
+
+    toggleSemPrazo(semPrazo) {
+      const fim = $('nop-data-fim');
+      if (fim) { fim.disabled = semPrazo; if (semPrazo) fim.value = ''; }
+    },
+
     toggleNovaOp() {
       const form = $('nova-op-form');
       if (!form) return;
@@ -2429,6 +2526,13 @@ const NIT_PLANOP = (() => {
         const tipoInp = $('nop-tipo-input'); if (tipoInp) tipoInp.value = '';
         const hor = $('nop-horario'); if(hor) hor.value='';
         const nome = $('nop-nome'); if(nome) nome._editado = false;
+        // Resetar recorrência para 'única'
+        window._nopDias = new Set();
+        UI.selRecorrencia('unica');
+        const semPrazo = $('nop-sem-prazo'); if (semPrazo) semPrazo.checked = false;
+        const di = $('nop-data-inicio'); if (di) di.value = '';
+        const df = $('nop-data-fim'); if (df) { df.value = ''; df.disabled = false; }
+        document.querySelectorAll('#nop-dias-semana .dia-chip.active').forEach(c => c.classList.remove('active'));
         const btn = form.querySelector('.btn-accent-sm');
         if (btn) { btn.disabled = false; btn.textContent = 'Criar Operação'; }
         UI._initBairroCombo();
@@ -2808,13 +2912,35 @@ const NIT_PLANOP = (() => {
       if (!tipo)   { toast('Selecione o tipo de missão','warning'); return; }
       if (!S.escalaAtiva) { toast('Abra um turno primeiro','warning'); return; }
 
+      // Recorrência e vigência
+      const recorrencia = $('nop-recorrencia')?.value || 'unica';
+      const semPrazo    = $('nop-sem-prazo')?.checked;
+      const dataInicio  = $('nop-data-inicio')?.value || null;
+      const dataFim     = semPrazo ? null : ($('nop-data-fim')?.value || null);
+      const diasSemana  = recorrencia === 'semanal'
+        ? [...(window._nopDias||[])].sort() : [];
+
+      if (recorrencia === 'semanal' && !diasSemana.length) {
+        toast('Selecione ao menos um dia da semana','warning'); return;
+      }
+
       const btn = document.querySelector('.nova-op-footer .btn-accent-sm');
       if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
 
-      await DB.adicionarOperacao({
+      const payload = {
         nome: upper(nome), bairro: upper(bairro),
-        horario: hor||'', tipoMissao: tipo
-      });
+        horario: hor||'', tipoMissao: tipo,
+        recorrencia
+      };
+      // Só grava campos de vigência se recorrente
+      if (recorrencia !== 'unica') {
+        payload.dataInicio = dataInicio;
+        payload.dataFim    = dataFim; // null = sem prazo
+        if (diasSemana.length) payload.diasSemana = diasSemana;
+      }
+
+      await DB.adicionarOperacao(payload);
+      window._nopDias = new Set();
       UI.fecharNovaOp();
       toast('Operação criada!', 'success');
     },
