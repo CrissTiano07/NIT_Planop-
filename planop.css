@@ -223,6 +223,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .shift-dot-on  { background: var(--success); box-shadow: 0 0 6px var(--success); }
 .shift-dot-off { background: var(--text-muted); }
 .shift-label {
+  color: var(--text-primary);
   font-size: 11px; font-weight: 600; color: var(--text-secondary);
   font-family: var(--font-mono); letter-spacing: 0.04em; flex: 1;
 }
@@ -267,7 +268,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .sidebar-section-toggle:hover { color: var(--text-secondary); }
 .section-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; flex: 1;
 }
 .section-count {
@@ -470,7 +471,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .ops-lista { flex: 1; overflow-y: auto; }
 .ops-item {
   display: flex; align-items: center; gap: var(--space-3);
-  padding: 11px var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border-left: 3px solid transparent;
   cursor: pointer;
   transition: background var(--dur-fast), border-color var(--dur-fast);
@@ -478,8 +479,13 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .ops-item:hover { background: var(--surface-hover); }
 .ops-item.active {
-  background: var(--accent-dim);
+  background: rgba(88,166,255,0.14);
   border-left-color: var(--accent);
+  border-left-width: 3px;
+}
+.ops-item.active .ops-item-name {
+  color: var(--accent);
+  font-weight: 700;
 }
 .ops-item-icon {
   width: 26px; height: 26px; border-radius: 6px;
@@ -1865,4 +1871,53 @@ input:focus {
 .tl-dot {
   width: 8px; height: 8px; border-radius: 50%;
   display: inline-block;
+}
+
+/* ── ALINHAMENTO VERTICAL DA SIDEBAR ─────────────────────
+   Todos os ícones/indicadores com largura uniforme para que
+   o texto ao lado comece sempre na mesma coluna vertical. */
+.sidebar-pulse,
+.shift-dot,
+.ops-item-icon {
+  width: 20px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* Status de sessão no rodapé (substitui o badge de cargo) */
+.user-session-label {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+  color: var(--text-tertiary); text-transform: none;
+}
+.user-session-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success);
+}
+
+/* Item 2: Salvar padrão como botão (não link) */
+.btn-salvar-padrao {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; padding: 8px var(--space-3);
+  margin-top: var(--space-2);
+  background: var(--bg-card); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); cursor: pointer;
+  font-size: 11px; font-weight: 500; color: var(--text-secondary);
+  transition: all var(--dur-fast);
+}
+.btn-salvar-padrao:hover {
+  border-color: var(--accent); color: var(--accent);
+}
+
+/* Item 3: Logout com label */
+.btn-logout-labeled {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--radius); cursor: pointer;
+  font-size: 11px; color: var(--text-tertiary);
+  transition: all var(--dur-fast); flex-shrink: 0;
+}
+.btn-logout-labeled:hover {
+  border-color: var(--danger); color: var(--danger);
+  background: var(--danger-dim);
 }
