@@ -140,8 +140,13 @@
         <button class="btn-add-membro" onclick="NIT_PLANOP.UI.abrirAddMembro()">
           + Adicionar membro
         </button>
-        <button class="btn-salvar-padrao" onclick="NIT_PLANOP.Actions.salvarSupervisaoPadrao()">
-          Salvar como padrão para este turno
+        <button class="btn-salvar-padrao" onclick="NIT_PLANOP.UI.confirmarSalvarPadrao(event)"
+          title="Salva a supervisão atual como padrão deste turno">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Fixar como padrão do turno
         </button>
       </div>
     </div>
@@ -213,13 +218,16 @@
       <div class="avatar" id="user-avatar" aria-hidden="true">CM</div>
       <div class="user-info">
         <span id="user-name" class="user-name">Cristiano Miranda</span>
-        <span id="user-role" class="user-role-badge">SUPERVISOR</span>
+        <span id="user-role" class="user-session-label">
+          <span class="user-session-dot"></span>Conectado
+        </span>
       </div>
-      <button class="btn-icon-nav" onclick="NIT_PLANOP.Auth.logout()"
-        title="Sair" aria-label="Sair">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <button class="btn-logout-labeled" onclick="NIT_PLANOP.Auth.logout()"
+        title="Sair" aria-label="Sair da conta">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
         </svg>
+        <span>Sair</span>
       </button>
     </div>
   </aside>
