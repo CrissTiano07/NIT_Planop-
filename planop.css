@@ -359,7 +359,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.btn-nova-op {
+.btn-nova-op-OLD {
   display: flex; align-items: center; justify-content: center;
   width: 100%; height: 34px;
   background: none; color: var(--accent);
@@ -1928,4 +1928,30 @@ input:focus {
 .btn-logout-labeled:hover {
   border-color: var(--danger); color: var(--danger);
   background: var(--danger-dim);
+}
+
+
+/* Item 4: Nova Operação como CTA sólido (não drop-zone tracejado) */
+.btn-nova-op {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: var(--space-3) var(--space-4);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent); font-weight: 600; font-size: 13px;
+  cursor: pointer; transition: all var(--dur-fast);
+}
+.btn-nova-op:hover {
+  background: var(--accent); color: #0d1826;
+}
+
+/* Item 3: ritmo vertical uniforme na sidebar (escala 8/12/16) */
+.sidebar-section { padding-bottom: var(--space-2); }
+.btn-nova-op-wrap { padding: var(--space-3) var(--space-4); }
+.supervisao-lista { gap: var(--space-2) !important; }
+
+/* Item 1: dot de rascunho — operação sem postos (estado neutro) */
+.ops-status-dot.rascunho {
+  background: var(--text-muted);
+  opacity: 0.5;
 }
