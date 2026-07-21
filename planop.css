@@ -2064,3 +2064,32 @@ input:focus {
   font-size: 9px; font-weight: 600; letter-spacing: 0.03em;
   color: var(--accent); opacity: 0.85;
 }
+
+/* ═══ NAVEGADOR DE DATA (Fase 2) ════════════════════════ */
+.section-label-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.data-nav {
+  display: flex; align-items: center; gap: 2px;
+}
+.data-nav-btn {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-tertiary);
+  cursor: pointer; font-size: 14px; line-height: 1;
+  transition: all var(--dur-fast);
+}
+.data-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.data-nav-label {
+  padding: 2px 8px; min-width: 44px;
+  background: none; border: 1px solid transparent;
+  border-radius: var(--radius); cursor: pointer;
+  font-size: 10px; font-weight: 600; color: var(--text-tertiary);
+  transition: all var(--dur-fast);
+}
+.data-nav-label:hover { color: var(--text-primary); }
+.data-nav-label.data-outra {
+  color: var(--accent); border-color: var(--accent);
+  background: var(--accent-dim);
+}
