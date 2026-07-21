@@ -1010,6 +1010,28 @@ const NIT_PLANOP = (() => {
     },
 
     // ── SUPERVISÃO
+    confirmarSalvarPadrao(event) {
+      event?.stopPropagation();
+      const btn = event?.currentTarget;
+      if (!btn) { Actions.salvarSupervisaoPadrao(); return; }
+      // Confirmação inline — evita sobrescrever config de todos os plantões por engano
+      if (btn.dataset.confirmando === '1') return;
+      btn.dataset.confirmando = '1';
+      const original = btn.innerHTML;
+      btn.innerHTML = `<span style="color:var(--warning)">Confirmar? Sobrescreve o padrão</span>`;
+      const restaurar = () => { btn.innerHTML = original; btn.dataset.confirmando = '0'; };
+      const t = setTimeout(restaurar, 3500);
+      const onConfirm = (e) => {
+        e.stopPropagation();
+        clearTimeout(t);
+        btn.removeEventListener('click', onConfirm);
+        Actions.salvarSupervisaoPadrao();
+        restaurar();
+      };
+      // Próximo clique confirma
+      setTimeout(() => btn.addEventListener('click', onConfirm, { once: true }), 50);
+    },
+
     toggleSupervisao() {
       const body    = $('supervisao-body');
       const toggle  = $('supervisao-toggle');
@@ -1077,7 +1099,8 @@ const NIT_PLANOP = (() => {
         const nPostos  = Object.values(S.postos).filter(p => p.operacaoId === id).length;
         const sub      = [titleCase(op.bairro||''), nPostos + (nPostos === 1 ? ' posto' : ' postos')]
           .filter(Boolean).join(' · ');
-        return `<div class="ops-item ${ativo}" onclick="NIT_PLANOP.UI.selOp('${id}')">
+        return `<div class="ops-item ${ativo}" onclick="NIT_PLANOP.UI.selOp('${id}')"
+          ${ativo ? 'aria-current="true"' : ''} role="button" tabindex="0">
           <div class="ops-item-icon">${icon}</div>
           <div class="ops-item-body">
             <div class="ops-item-name">${esc(titleCase(op.bairro||op.nome||'—'))}</div>
