@@ -1059,7 +1059,7 @@ const NIT_PLANOP = (() => {
 
       lista.innerHTML = todos.map(m => {
         const fixoIcon  = m.fixo
-          ? `<span class="supervisao-fixo-icon" title="Supervisor fixo · presente em todos os turnos">📌</span>`
+          ? `<svg class="supervisao-fixo-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="Supervisor fixo"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z"/></svg>`
           : '';
         const removeBtn = !m.fixo && canWrite()
           ? `<button class="supervisao-remove-btn"
