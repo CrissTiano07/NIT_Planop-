@@ -149,10 +149,19 @@ const NIT_PLANOP = (() => {
 
   const PREP = new Set(['de','do','da','dos','das','e','a','o','em',
                         'no','na','nos','nas','por','para','com','x']);
+  // Numerais romanos comuns em logradouros (Pedro II, João XXIII, Av. XV de Novembro)
+  const ROMANO = /^(?=[MDCLXVI]+$)M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
   const titleCase = str => String(str||'').toLowerCase()
     .split(' ')
-    .map((w, i) => (i === 0 || !PREP.has(w))
-      ? w.charAt(0).toUpperCase() + w.slice(1) : w)
+    .map((w, i) => {
+      const limpo = w.replace(/[.,;:]/g, '');
+      // Numeral romano: mantém tudo maiúsculo (II, IV, XXIII)
+      if (limpo.length > 0 && ROMANO.test(limpo.toUpperCase()) && limpo.length >= 2) {
+        return w.toUpperCase();
+      }
+      return (i === 0 || !PREP.has(w))
+        ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+    })
     .join(' ');
   const vibrar = ms => navigator.vibrate?.(ms);
 
@@ -1220,6 +1229,8 @@ const NIT_PLANOP = (() => {
           <input class="ops-search" placeholder="Buscar operação, posto, endereço ou pessoa..."
             value="${esc(busca)}"
             oninput="NIT_PLANOP.UI.filtrarOps(this.value)">
+          <button class="btn-ghost-sm" id="btn-expandir-ops"
+            onclick="NIT_PLANOP.UI.toggleExpandirOps()">Expandir todas</button>
           ${canWrite() ? `<button class="btn-nova-op-center" onclick="NIT_PLANOP.UI.toggleNovaOp()">
             + Nova Operação
           </button>` : ''}
@@ -1390,6 +1401,8 @@ const NIT_PLANOP = (() => {
         <div class="op-card-body ${expandido?'':'hidden'}">
           <div class="qru-section-header">
             <span class="qru-section-label">Postos / QRUs</span>
+            ${postos.length > 1 ? `<button class="btn-ghost-sm" id="btn-exp-postos-${opId}"
+              onclick="NIT_PLANOP.UI.toggleExpandirPostos('${opId}',event)">Expandir postos</button>` : ''}
             ${canWrite() ? `<button class="btn-add-posto"
               onclick="event.stopPropagation();NIT_PLANOP.UI.abrirAddPosto('${opId}')">+ Posto</button>` : ''}
           </div>
@@ -1497,6 +1510,39 @@ const NIT_PLANOP = (() => {
       if (hidden) hidden.value = turno;
       document.querySelectorAll('.planejar-turno-opt').forEach(b =>
         b.classList.toggle('sel', b.dataset.turno === turno));
+    },
+
+    // Expande/colapsa todos os postos de uma operação
+    toggleExpandirPostos(opId, event) {
+      event?.stopPropagation();
+      const lista = document.getElementById(`qrus-lista-${opId}`);
+      const btn   = document.getElementById(`btn-exp-postos-${opId}`);
+      if (!lista) return;
+      const cards = lista.querySelectorAll('.qru-card');
+      if (!cards.length) return;
+      const algumFechado = [...cards].some(c => !c.classList.contains('expanded'));
+      cards.forEach(c => c.classList.toggle('expanded', algumFechado));
+      if (btn) btn.textContent = algumFechado ? 'Colapsar postos' : 'Expandir postos';
+    },
+
+    // Expande/colapsa todas as operações visíveis
+    toggleExpandirOps() {
+      const cards = document.querySelectorAll('.op-card');
+      if (!cards.length) return;
+      S._opsExpandidas = S._opsExpandidas || new Set();
+      const algumFechado = [...cards].some(c => !c.classList.contains('expandido'));
+      cards.forEach(card => {
+        const opId = card.id.replace('opcard-','');
+        const body = card.querySelector('.op-card-body');
+        const chev = card.querySelector('.op-card-chevron');
+        card.classList.toggle('expandido', algumFechado);
+        body?.classList.toggle('hidden', !algumFechado);
+        if (chev) chev.textContent = algumFechado ? '▾' : '▸';
+        if (algumFechado) S._opsExpandidas.add(opId);
+        else S._opsExpandidas.delete(opId);
+      });
+      const btn = $('btn-expandir-ops');
+      if (btn) btn.textContent = algumFechado ? 'Colapsar todas' : 'Expandir todas';
     },
 
     toggleOpExpand(opId) {
