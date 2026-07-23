@@ -1,376 +1,376 @@
 # CENTRAL OPS · Plano Operacional — CONTEXT.md
 > Para o próximo Claude: leia tudo antes de tocar em qualquer arquivo.
-> Atualizado: 20/07/2026
+> Atualizado: 22/07/2026 · v1.2
 
 ---
 
-## 1. Identidade do Sistema
+## 1. Identidade
 
-**Nome:** CENTRAL OPS / Plano Operacional  
-**Órgão:** AMC Fortaleza — NIT (Núcleo de Inteligência de Tráfego)  
-**Desenvolvedor:** Cristiano Miranda (CrissTiano07) — solo  
-**URL:** crisstiano07.github.io/NIT_Planop-/  
+**Sistema:** CENTRAL OPS / Plano Operacional
+**Órgão:** AMC Fortaleza — NIT (Núcleo de Inteligência de Tráfego)
+**Desenvolvedor:** Cristiano Miranda (CrissTiano07) — solo
+**URL:** crisstiano07.github.io/NIT_Planop-/
 **Repositório:** github.com/CrissTiano07/NIT_Planop-
 
+**A dor que originou o produto:** o supervisor monta a escala do fim de semana toda sexta, no Excel, para ~200 agentes em dezenas de postos e turnos diferentes. Muda muito, dói muito. Tudo no sistema serve a resolver isso.
+
+**Status:** em desenvolvimento. Ainda não está em uso por ninguém além do desenvolvedor.
+
 ---
 
-## 2. Stack
+## 2. Stack e arquivos
 
 | Camada | Tecnologia |
 |--------|-----------|
 | Frontend | Vanilla JS + HTML + CSS (sem frameworks) |
-| Banco | Firebase RTDB (nit-operacional-default-rtdb.firebaseio.com) |
-| Deploy | GitHub Pages via GitHub Actions (static.yml) |
+| Banco | Firebase RTDB (`nit-operacional-default-rtdb.firebaseio.com`) |
+| Deploy | GitHub Pages via Actions (`static.yml`) |
 | Backend | **Nenhum** — 100% client-side |
 
-**Arquivos:**
-- `planop.js` ~3080L — toda lógica (IIFE único)
-- `planop.css` ~1780L — todo CSS
-- `index.html` ~274L — HTML + Firebase config
+```
+planop.js    ~3770L   toda a lógica (IIFE único)
+planop.css   ~2300L   todo o CSS
+index.html    ~310L   HTML + Firebase config
+```
 
-**Estrutura interna do JS (ordem obrigatória):**
+**Ordem interna do JS (obrigatória):**
 `S (estado) → CFG (constantes) → helpers → Auth → DB → UI → Campo → Actions → listeners globais → return { Auth, UI, Campo, Actions, DB }`
 
 ---
 
 ## 3. Firebase
 
-**Projeto:** `nit-operacional-default-rtdb.firebaseio.com`  
 **apiKey:** `AIzaSyCWAGfmCr-pHr0asIk_Sfz1WbajIEhiZn0`
 
-### Paths do Planop (ESCREVE):
+**Paths que o Planop ESCREVE:**
 ```
-/efetivo/escalas/{id}/          status, data, turno, horários, supervisao{}
-/efetivo/operacoes/{id}/        escalaId, nome, bairro, tipoMissao, horario
-/efetivo/postos/{id}/           escalaId, operacaoId, local, orientadores{}, faltou
-/efetivo/recursos/{id}/status   disponivel|escalado|indisponivel|ausente
-/efetivo/recursos/{id}/         (cadastro completo ao criar pessoa)
-/efetivo/supervisao_config/     padrao por turno
-/efetivo/config/                (legado — ainda usado)
-```
-
-### Paths que NUNCA deve tocar:
-```
-/kanban/*          Semáforo — exclusivo
-/recursos/*        Semáforo (diferente de /efetivo/recursos/)
-/usuarios_autorizados/*
+/efetivo/escalas/{id}/           status, data, turno, horários, supervisao{}
+/efetivo/operacoes/{id}/         escalaId, turno, bairro, tipoMissao, recorrência
+/efetivo/postos/{id}/            escalaId, operacaoId, local, orientadores{}
+/efetivo/recursos/{id}/          cadastro + status + turno_padrao + bairro + transporte
+/efetivo/supervisao_config/      padrão de supervisão por turno
+/efetivo/config/                 (legado, ainda usado)
 ```
 
-### emailKey format: `.` → `_` e `@` → `_at_`
-Exemplo: `cristiano@gmail.com` → `cristiano_at_gmail_com`  
-(Semáforo usa `|` — diferente. Nunca misturar.)
+**Paths PROIBIDOS (são do módulo Semáforo):**
+```
+/kanban/*   /recursos/*   /usuarios_autorizados/*   /cursor_exportacao/*
+```
+
+**emailKey:** `.` → `_` e `@` → `_at_` (ex: `user_at_gmail_com`)
+O Semáforo usa `|` — formato diferente, nunca misturar.
+
+**Rules:** precisam incluir `efetivo/config` e `efetivo/supervisao_config` (adicionados em 21/07).
 
 ---
 
 ## 4. Auth
 
-- Login: `signInWithRedirect` (Google) — **não popup** (COOP error)
+- Login normal: `signInWithRedirect` (Google) — **não popup**, gera erro COOP
+- **Aba anônima:** Chrome 120+ bloqueia cookies de terceiros e quebra o redirect. `Auth.login()` detecta incógnito testando `localStorage` e cai para `signInWithPopup`
 - Modo Campo: auth anônima via `?modo=campo`
-- Roles em `/efetivo_roles/{emailKey}/role` → `monitor|supervisor|admin`
-- `_resolveRole` tenta `/role` depois raiz — suporta ambas as estruturas
+- Roles em `/efetivo_roles/{emailKey}` → `monitor | supervisor | admin`
+- `_resolveRole` tenta `/role` (string) e depois a raiz — suporta as duas estruturas
 
 ---
 
-## 5. Decisões Arquiteturais Críticas
+## 5. Layout atual (reestruturado em 21/07)
+
+```
+┌────────────┬────────────────────────────────┬──────────┐
+│ CONTEXTO   │ [Manhã][Tarde][Noite][Extraord]│  EFETIVO │
+│            │ ‹ Hoje ›  [busca]  [+ Nova Op] │          │
+│ turno ativo│ ────────────────────────────── │  totais  │
+│ supervisão │ ▸ Aldeota · Controle       ●   │  lista   │
+│            │   └ postos (expandem inline)   │  staff   │
+│ usuário    │ ▸ Parangaba · Apoio        ●   │          │
+└────────────┴────────────────────────────────┴──────────┘
+```
+
+**A sidebar NÃO é mais navegação** — virou painel de contexto (turno, supervisão, usuário). A lista de operações vive no centro.
+
+**Abas de turno no topo do centro** — decisão fundamentada: turno é filtro temporal (3-4 itens), não navegação de seção. Padrão de mercado põe isso em top bar.
+
+**Operações expandem inline** ao clicar; os postos aparecem dentro do card.
+
+**Form de nova operação é overlay modal** — precisou sair da sidebar porque o centro re-renderiza e destruiria um form inline.
+
+---
+
+## 6. Decisões arquiteturais críticas
 
 ### Listeners
 ```js
-S._unsubs       // globais — limpos no logout
-S._escalaUnsubs // ops/postos — limpos a cada troca de turno
-S._suppressRender // flag 600-800ms — bloqueia renderMainContent durante writes
+S._unsubs         // globais — limpos no logout
+S._escalaUnsubs   // ops/postos — limpos a cada troca de turno
+S._suppressRender // flag 600-800ms — bloqueia render durante writes
 ```
+`_listenOperacoes` e `_listenPostos` **sempre filtram por escalaId** e **reconstroem** o estado do snap (não fazem merge aditivo) — senão deleções não refletem na UI.
 
-`_listenOperacoes` e `_listenPostos` **sempre filtram por `escalaId`**  
-Os listeners **reconstroem** `S.operacoes` e `S.postos` do snap (não fazem merge aditivo) para que deleções reflitam na UI.
+### Renderização cirúrgica (NÃO substituir por renderMainContent)
+```js
+UI._patchQruCard(postoId)   // chips, badge, borda do card de posto
+UI._patchFotos(postoId)     // só a seção de fotos
+UI._patchOpCard(opId)       // métricas do header da operação
+UI._patchListaOps()         // só a lista (preserva foco do input de busca)
+```
+Esses quatro são **carga estrutural, não duplicação**. Sem eles a UI pisca, os cards colapsam no meio da edição e o campo de busca perde o foco. Um refactor apressado que os remova é regressão séria.
 
 ### Update otimista
-Todo write importante tem 3 etapas:
-1. `S._suppressRender = true` por 600-800ms
-2. Update local em `S.postos`/`S.operacoes`/`S.recursos`
-3. `UI._patchXxx()` cirúrgico (não `renderMainContent`)
+Todo write importante segue: `_suppressRender = true` → update local em `S.*` → `_patchXxx()` cirúrgico. É por isso que a interface responde instantaneamente.
 
-### Funções cirúrgicas (NÃO substituir por renderMainContent):
-```js
-UI._patchQruCard(postoId)  // atualiza chips, badge, borda do card
-UI._patchFotos(postoId)    // atualiza só a seção de fotos
-```
+### Supervisores fixos (imutáveis)
+`CFG.SUPERVISORES_FIXOS` — Marcos Danilo e Francisco Helder, presentes em toda escala.
 
-### Supervisores fixos (NUNCA remover):
-```js
-CFG.SUPERVISORES_FIXOS = [
-  { id:'fixo_marcos_danilo', nome:'Marcos Danilo', cargo:'SUPERVISOR', fixo:true },
-  { id:'fixo_francisco_helder', nome:'Francisco Helder', cargo:'SUPERVISOR', fixo:true }
-]
-```
-
-### Display vs Storage
-- Banco: MAIÚSCULO (compatibilidade relatório AMC)
-- Display: `titleCase()` em todos os pontos de renderização
-- A função `titleCase` está no escopo da IIFE com lista de preposições minúsculas
-
-### Cargos
-`SUPERVISOR/AUX/MOT/MON/ORI` — sem OPERADOR. Mapa explícito em `CFG.CARGO_ABBR`.
+### Display vs banco
+Banco em MAIÚSCULO (compatibilidade com relatórios AMC). Display via `titleCase()`, que preserva numerais romanos (`Pedro II`, `Av. XV de Novembro`).
 
 ---
 
-## 6. Padrões de UI Implementados
-
-### Combo com teclado (padrão universal)
-`UI._combo(inputId, listId, items, onSelect)` — ↑↓ Enter Esc. Clona o input antes de re-init para evitar listeners duplicados.
-
-### Expansão inline (accordion) — padrão atual
-**NÃO usar popovers flutuantes.** Dois lugares implementados:
-
-1. **Staff (painel direito):** clicar na linha expande `#exp-{rId}` com dados + ações
-2. **Chips de orientador (QRU card):** clicar no chip expande `#chip-exp-{postoId}` abaixo do grupo
-
-### Confirmações inline (NÃO usar confirm() nativo)
-- Encerrar turno: overlay modal `#encerrar-confirm-overlay`
-- Deletar op/posto: `.inline-confirm` inserido no DOM local
-
-### Fotos
-- **Paste global:** `document.addEventListener('paste',...)` captura prints colados em qualquer lugar da página quando detalhes de um posto estão abertos (`[id^="det-"].open`)
-- Drag & drop: `soltarFoto(event, postoId, tipo)`
-- Sempre: `S._suppressRender = true` + `UI._patchFotos(postoId)`
-- Sempre: comprimir antes de gravar — `UI._compressImage(src, 900, 0.72)`
-
-### Registrar falta no posto
-`Actions.toggleFalta(postoId, rId)` — grava `faltou: true/false` em `/efetivo/postos/{id}/orientadores/{rId}/faltou`  
-Chip com faltou: avatar vermelho, nome riscado, badge "FALTOU", background danger-dim
-
----
-
-## 7. Estrutura de Dados
+## 7. Estrutura de dados
 
 ```json
 // Recurso
-{
-  "nome": "DOUGLAS MAIA DA SILVA",
-  "cargo": "ORIENTADOR",
-  "status": "disponivel|escalado|indisponivel|ausente",
-  "motivoIndisponivel": "ferias|falta|licenca|outro_turno|outro",
-  "turno_padrao": "manha|tarde|noite",
-  "contato": "85999990000",
-  "bairro": "ALDEOTA",
-  "transporte": "veiculo_proprio|transporte_publico"
-}
+{ "nome":"...", "cargo":"ORIENTADOR", "status":"disponivel|escalado|indisponivel|ausente",
+  "motivoIndisponivel":"ferias|falta|licenca|outro_turno|outro",
+  "turno_padrao":"manha|tarde|noite", "contato":"...",
+  "bairro":"ALDEOTA", "transporte":"veiculo_proprio|transporte_publico" }
+
+// Operação
+{ "escalaId":"...", "turno":"manha|tarde|noite|extraordinario",
+  "bairro":"...", "tipoMissao":"...", "horario":"06:00",
+  "status":"ativa|planejada", "origemOpId":"...",
+  "recorrencia":"unica|diaria|semanal|anual",
+  "diasSemana":[0-6], "dataInicio":"YYYY-MM-DD", "dataFim":"YYYY-MM-DD|null" }
 
 // Posto
-{
-  "escalaId": "...", "operacaoId": "...",
-  "numero": 1, "local": "AV X × AV Y",
-  "bairro": "ALDEOTA", "tipoAcao": "CONTROLE",
-  "orientadores": {
-    "{rId}": { "nome", "cargo", "ts", "faltou": false }
-  },
-  "fotoReferencia": "base64jpeg ~120KB",
-  "fotosRegistro": { "{key}": { "data", "timestamp" } }
-}
+{ "escalaId":"...", "operacaoId":"...", "numero":1, "local":"AV X × AV Y",
+  "bairro":"...", "tipoAcao":"CONTROLE", "obs":"...",
+  "orientadores": { "{rId}": { "nome","cargo","ts","faltou":false } },
+  "fotoReferencia":"base64", "fotosRegistro":{ "{key}":{"data","timestamp"} } }
 ```
 
----
-
-## 8. Design System
-
-- **Fontes:** Inter (UI) + JetBrains Mono (dados) via Google Fonts
-- **font-feature-settings:** `"cv11", "ss01"` no body; `"tnum"` em elementos mono
-- **Cores:** tokens CSS em `:root` — `--bg`, `--accent` (#58a6ff), `--success`, `--warning`, `--danger`
-- **Lifecycle (preparado, ainda não ativo):** `--lifecycle-pending` (cinza), `--lifecycle-active` (laranja), `--lifecycle-done` (verde)
-- **Sidebar/Right panel:** 320px cada
-- **Escala tipográfica:** piso 10px, 4 níveis (10/11-12/13-14/15+)
-- **Contraste mínimo:** `--text-tertiary` para texto funcional (~7:1)
+**Cargos:** `SUPERVISOR · AUXILIAR · MOTOCICLISTA · MONITOR · ORIENTADOR` (abrev. SUP/AUX/MOT/MON/ORI)
 
 ---
 
-## 9. O Que Está Pendente (Backlog)
+## 8. Sistema de turnos
 
-### Alta prioridade
-- [ ] **Modo Planejar** — o problema original que motivou o sistema. O supervisor de sexta planeja os 6 turnos do fim de semana. Fluxo: começa pelos postos. Mesmo paradigma do Modo Executar mas com `status:'planejada'` e navegação entre datas. Usar Modo Executar como base.
-- [ ] **Passagem de bastão** — UI do form (estrutura Firebase `/bastao` já existe em `encerrarEscala`)
-- [ ] **Modal de abertura de turno** — hoje abre silenciosamente com auto-detect
-
-### Média prioridade
-- [ ] Relatório mensal (17 abas + TOTAL + BAIRROS)
-- [ ] Histórico de designações `/efetivo/historico/{ano}/{mes}/{diaKey}/`
-- [ ] Rodízio inteligente por score (quem trabalhou menos naquele tipoMissao aparece primeiro)
-
-### Integração com Semáforo
-- Semáforo pode ler `.once()` em `/efetivo/recursos` para saber disponíveis
-- Nunca listener permanente cruzado entre módulos
-
----
-
-## 10. Prompt Universal para Próxima Sessão
-
+```js
+manha:          05:30–11:30
+tarde:          10:30–16:30
+noite:          15:30–21:30
+extraordinario: (sem horário fixo)
 ```
-Você é fullstack sênior em Vanilla JS, HTML, CSS e Firebase RTDB.
-Leia CONTEXT_PLANOP.md completamente antes de qualquer mudança.
+As sobreposições são **intencionais** — é a janela de rendição, onde os turnos se cruzam para a passagem.
 
-Arquivos: planop.js (~3080L) + planop.css (~1780L) + index.html (~274L)
-URL: crisstiano07.github.io/NIT_Planop-/
-Firebase: nit-operacional-default-rtdb.firebaseio.com
-
-Regras obrigatórias:
-1. Nunca usar confirm() nativo — confirmações inline
-2. Nunca usar popovers flutuantes — expansão accordion inline
-3. Sempre S._suppressRender + _patchXxx() em vez de renderMainContent durante edições
-4. Nunca tocar /kanban/* ou /recursos/* (são do Semáforo)
-5. Display em titleCase, banco em MAIÚSCULO
-6. Supervisores fixos Marcos Danilo e Francisco Helder são imutáveis
-7. Fotos: sempre comprimir + _patchFotos() após gravar
-8. signInWithRedirect (não popup — COOP error)
+### Cores de turno (identidade visual)
+```js
+manha: '#2dd4bf'  // turquesa — céu antes do amanhecer; 150° do laranja
+tarde: '#f97316'  // laranja-coral — sol pleno
+noite: '#8b7cf6'  // violeta — anoitecer, vigília
 ```
+Cada pessoa carrega a cor do seu `turno_padrao` no avatar, como identidade estável. Vermelho tem precedência quando `faltou` — falta é informação mais urgente que turno.
+
+**Por que turquesa e não dourado:** dourado ficava a 18° do laranja da tarde, indistinguível em avatares pequenos. Turquesa dá 150° de separação. Rosa foi descartado (30° do vermelho de "faltou", geraria confusão) e verde-limão também (luminância alta demais, geraria glare).
 
 ---
 
-## 11. Bugs Conhecidos / Comportamentos a Monitorar
+## 9. Subsistema de recorrência
 
-- `S._suppressRender` de 600ms pode ser insuficiente em conexões lentas — monitorar
-- Múltiplos postos com detalhes abertos ao mesmo tempo + paste de foto: vai para o sem foto, avisa se ambíguo
-- O accordeão dos chips (`chip-exp-{postoId}`) é limpo quando `_patchQruCard` recria o card — estado de expansão se perde; aceitável pois ações são rápidas
+Operação tem **recorrência** (frequência) + **vigência** (de quando até quando). A regra gera as instâncias; o supervisor cadastra uma vez.
 
----
-
-*CENTRAL OPS v1.1 · AMC Fortaleza · NIT · 20/07/2026*
-
----
-
-## 12. Bugs Resolvidos Pós-Geração do Context
-
-### Auth: Login em aba anônima / incógnito
-**Causa:** Chrome 120+ bloqueia cookies de terceiros em incógnito. `signInWithRedirect` armazena estado que não sobrevive ao redirect sem esses cookies.  
-**Fix:** `Auth.login()` detecta incógnito via `localStorage` (lança exceção se bloqueado) e usa `signInWithPopup` como fallback. Em sessão normal, mantém `signInWithRedirect`.
-
-### UI: Ação de status parecia não funcionar (exigia refresh)
-**Causa:** `setStatusPessoa` chamava `renderRightPanel()` que reconstruía toda a lista, fazendo a linha expandida desaparecer. O usuário via o painel fechar abruptamente e achava que a ação não completou.  
-**Fix:** `setStatusPessoa` agora fecha explicitamente a linha expandida (`#exp-{rId}`) antes de chamar `renderRightPanel()`. Transição visual limpa, ação claramente concluída.
-
-### UI: Chips do QRU — bugs do accordion
-- `toggleChipExpand` usava `event.stopPropagation()` sem guard — quebrava quando chamado com string `'{skip}'`. Fix: `if (event?.stopPropagation) event.stopPropagation()`
-- `_patchQruCard` reconstruía chips sem fechar o painel de expansão. Fix: fecha e limpa o painel antes de reconstruir.
-
----
-
-## 13. ARQUITETURA DEFINIDA: Navegação por Turno + Planejamento Unificado
-
-> Decisão de produto tomada em 21/07/2026. Esta é a próxima grande feature.
-> Substitui o conceito de "Modo Planejar separado" por planejamento contextual.
-
-### Conceito central
-A sidebar deixa de listar "OPERAÇÕES" soltas e passa a agrupar operações **por turno**, com o turno como rótulo à esquerda de cada grupo. Vê-se o dia inteiro (manhã/tarde/noite/extraordinário) numa lista contínua.
-
-### Layout da sidebar (novo)
-```
-MANHÃ · 05:30–11:30    │  Aldeota · Controle de Tráfego · 06:00h (ATIVA)
-                       │
-TARDE · 10:30–16:30    │  Parangaba · Apoio a Outros Órgãos (ATIVA)
-                       │
-NOITE · 15:30–21:30    │  Centro (PLANEJADA)
-                       │  Montese (RENDIÇÃO — vem da tarde)
-                       │
-EXTRAORDINÁRIO         │  (nenhuma operação)
-```
-
-### Nomenclatura de turnos (validada com CLT)
-`MANHÃ · TARDE · NOITE · EXTRAORDINÁRIO`
-- Manhã/Tarde/Noite = vocabulário real do operador, reconhecido pela CLT
-- "Extraordinário" para horários fora do padrão (termo trabalhista correto para hora fora da jornada)
-- Descartado A/B/C/D (abstrato demais para agentes municipais)
-
-### Três estados de operação (semiótica)
-| Estado | Significado | Visual |
-|--------|-------------|--------|
-| ATIVA | Acontece neste turno, começa e termina nele | Cor cheia, dot de cobertura real |
-| PLANEJADA | Projetada para turno futuro, não começou | Fantasma/tracejada, badge PLANEJADA, sem dot de cobertura |
-| RENDIÇÃO | Contínua, atravessa turnos, troca de equipe no mesmo posto | Aparece nos DOIS turnos, marca de continuidade |
-
-### Decisões de comportamento (confirmadas com o usuário)
-1. **Rendição agendada**: a MESMA operação aparece nos dois turnos (o da origem e o de destino). Não é cópia — é a mesma operação visível em ambos, com marca de continuidade. Posto crítico que não pode ficar descoberto (ex: cruzamento). Turno seguinte RENDE a equipe.
-2. **Horário fora do padrão**: destacar quando o horário da operação difere do horário do turno. Ex: turno Manhã é 05:30, mas operação começa 06:00 → destacar 06:00 como alerta. Propósito: evitar que o operador assuma que tudo começa no horário do turno.
-3. **Turnos vazios aparecem**: todos os 4 turnos sempre visíveis na lista, mesmo sem operação ("nenhuma operação"). Dá visão completa do dia e convida a planejar.
-
-### Planejamento unificado (a inovação)
-NÃO existe "Modo Planejar" separado. Cada operação tem uma ação contextual "Planejar para [próximo turno]" que:
-- Cria cópia da operação no turno de destino com `status: 'planejada'`
-- Herda postos, endereços, tipo de ação
-- Zera as pessoas (elas mudam entre turnos)
-- Quando o turno de destino é ativado, a operação planejada já está lá esperando designação
-
-Isso resolve a DOR ORIGINAL (escala de fim de semana feita na sexta) pelo gesto natural: "esta operação se repete no próximo turno" = um clique, sem copiar-colar manual do Excel.
-
-### Impacto no modelo de dados
-- Operações ganham vínculo a `turno` (manha/tarde/noite/extraordinario) além de escalaId
-- Novo status: 'planejada' (além de 'ativa'/'concluida')
-- Rendição: campo que marca operação como contínua + turnos onde aparece
-- `_listenOperacoes` precisa carregar operações de múltiplos turnos, não só o ativo
-
-### Etapas de implementação (ordem)
-1. Seletor/agrupamento por turno na sidebar (turno como rótulo à esquerda)
-2. Estado visual "planejada" (ativar lifecycle pending do CSS)
-3. Horário fora do padrão destacado
-4. Ação "Planejar para [turno]" com herança de estrutura
-5. Rendição agendada (operação em dois turnos)
-
----
-
-## 14. SUBSISTEMA DE RECORRÊNCIA (evolução do Modo Planejar)
-
-> Decisão 21/07/2026. Substitui "operação continuada" por sistema completo de
-> recorrência + vigência. Resolve a dor original (escala de fim de semana) de vez.
-
-### Conceito
-Operação deixa de ser evento de um dia. Ganha RECORRÊNCIA (com que frequência
-acontece) + VIGÊNCIA (de quando até quando). A regra gera instâncias diárias
-automaticamente — o supervisor cadastra uma vez, o sistema projeta.
-
-### Modelo de dados (adicionar à operação)
-```
-operacao {
-  recorrencia: 'unica' | 'diaria' | 'semanal' | 'anual'
-  diasSemana: [0-6]           // se semanal: 0=domingo ... 6=sábado
-  dataInicio: 'YYYY-MM-DD'
-  dataFim: 'YYYY-MM-DD' | null // null = sem prazo (indefinido)
-  // resto igual
-}
-```
-
-### Casos reais cobertos (todos com um só modelo)
-| Caso | recorrencia | diasSemana | dataFim |
-|------|-------------|-----------|---------|
+| Caso real | recorrencia | diasSemana | dataFim |
+|-----------|-------------|------------|---------|
 | Obra temporária | diaria | — | 2026-07-22 |
 | Ciclofaixa de Lazer | semanal | [0] domingo | null |
 | Feira livre | semanal | [6] sábado | null |
 | Réveillon | anual | — | null |
 | Posto fixo permanente | diaria | — | null |
-| Evento único | unica | — | (data única) |
 
-### Rótulos de vigência (validado com usuário)
+`dataFim: null` = **sem prazo**. Rótulos: "Diária · até 22/07", "Domingos · sem prazo", "Anual · 31/12".
+
+**`operacaoAconteceEm(op, data)`** decide se a operação acontece numa data. Testada e correta para os quatro tipos.
+
+**Navegador de data** (‹ Hoje ›) no topo do centro permite ver dias futuros com as recorrências projetadas.
+
+**Status:** Fases 1 (campos) e 2 (projeção) prontas. **Fase 3 pendente:** exceções ("este domingo não tem") e editar-esta-instância vs editar-todas — a parte complexa, padrão Google Calendar.
+
+---
+
+## 10. Planejamento unificado
+
+**Não existe "Modo Planejar" separado.** Cada operação tem `··· → Planejar p/ outro turno`, que abre modal com:
+- Turno de destino
+- O que copiar: postos ☑ · orientadores ☐ · observações/fotos ☑
+
+Os defaults contam a história: estrutura física se repete, pessoas mudam. Cria a operação no turno destino com `status: 'planejada'` e `origemOpId` para rastreabilidade.
+
+**Estados visuais:** ATIVA (cheia) · PLANEJADA (fantasma, tracejada, sem dot) · RENDIÇÃO (borda accent, aparece nos dois turnos).
+
+---
+
+## 11. Busca
+
+Procura em cinco dimensões: **bairro, tipo, nome da operação, endereço do posto e nome de pessoa**.
+
+**Com busca ativa, atravessa todos os turnos** — encontrar alguém não deve exigir saber em que turno ela está (mesmo princípio do Modo Campo). Sem busca, respeita a aba selecionada.
+
+**Painel "Pessoas encontradas"** mostra onde cada uma está: turno, operação, posto, endereço, e se faltou. Quem não está escalado mostra o status (disponível/férias/licença). Botão "Ir →" navega até lá.
+
+**Crítico:** `filtrarOps` chama `_patchListaOps()`, nunca `renderMainContent()` — senão o input de busca é destruído e perde o foco a cada 150ms. O `renderMainContent` tem rede de segurança que restaura foco e cursor caso um listener do Firebase force re-render durante a digitação.
+
+---
+
+## 12. Design system
+
+- **Fontes:** Inter (UI) + JetBrains Mono (dados)
+- **Escala tipográfica:** piso 10px, 4 níveis (10 / 11-12 / 13-14 / 15+)
+- **Contraste:** `--text-tertiary` (~7:1) para texto funcional; `--text-muted` só decorativo
+- **Colunas:** sidebar 320px · centro 1fr · direita 320px
+
+### Gramática de cores (não violar)
+| Cor | Significa | Nunca usar para |
+|-----|-----------|-----------------|
+| `--accent` azul | interativo, foco, seleção | status |
+| `--success` verde | presença confirmada, conclusão | ação clicável |
+| `--warning` âmbar | atenção, cobertura parcial | erro |
+| `--danger` vermelho | falta, ausência, erro | ênfase decorativa |
+
+### Conforto visual (aplicado em 22/07)
+Bordas saturadas longas causam halo em olhos com astigmatismo — azul é o pior caso (aberração cromática). Por isso:
+- Card expandido usa **elevação de fundo + barra lateral única**, não borda de perímetro em azul
+- Barras semânticas dos postos dessaturadas para ~50-55% de opacidade
+- Avatares com `saturate(0.88)`
+- Hierarquia por elevação, não por linha — padrão Linear/Vercel/GitHub dark
+
+---
+
+## 13. Padrões de UI (obrigatórios)
+
+1. **Nunca `confirm()` nativo** — confirmações inline ou overlay
+2. **Nunca popovers flutuantes** — expansão accordion inline (staff no painel direito, chips nos QRUs)
+3. **Escape global centralizado** — um único `document.keydown` fecha a camada mais próxima, na ordem: settings → menus → accordion → chip → overlays → confirms
+4. **Undo de 5s em vez de confirmar antes** — deletar operação/posto faz soft delete, mostra "Desfazer", e só commita no Firebase depois. Padrão Gmail
+5. **Save indicator global** no header — verde (salvo) / âmbar pulsante (salvando) / vermelho (erro ou offline)
+6. **Erros traduzidos** — `erroHumano()` converte `PERMISSION_DENIED` em linguagem operacional
+7. **Fotos:** paste global (Ctrl+V em qualquer lugar com posto aberto), drag&drop, e clique. Referência vazia recebe primeiro; se ocupada, vai para registro
+8. **Textareas com auto-grow** via delegation global
+
+---
+
+## 14. Desempenho — medido em 22/07
+
+### Carga do shell
 ```
-Única:            (sem rótulo)
-Diária com fim:   "Diária · até 22/07"
-Diária sem fim:   "Diária · sem prazo"
-Semanal:          "Domingos · sem prazo"
-Anual:            "Anual · 31/12"
+Firebase SDK   267 KB (72% do total)
+Fontes          45 KB
+Código próprio  58 KB
+────────────────────
+TOTAL          370 KB gzip
 ```
-"sem prazo" é mais operacional que "indefinido".
+| Rede | Shell |
+|------|-------|
+| Wi-Fi | ~0,7s |
+| 4G bom | ~1,3s |
+| 4G médio | ~2,5s |
+| 3G | ~6,5s |
 
-### Faseamento
-- **FASE 1 (em construção):** campos recorrencia/dataInicio/dataFim no cadastro.
-  Todos os 4 tipos gravam. Rótulo de vigência aparece. Projeção automática ainda não.
-  'sem prazo' (dataFim null) essencial desde já.
-- **FASE 2:** projeção — operação aparece nos dias corretos conforme recorrência.
-- **FASE 3:** exceções ("este domingo não") + editar-esta vs editar-todas.
-  A parte complexa (padrão Google Calendar recurring events).
+### 🔴 PROBLEMA CRÍTICO — fotos base64 no nó dos postos
 
-### Vocabulário de estados de operação (completo e final)
-| Estado | Escopo temporal |
-|--------|-----------------|
-| ATIVA | acontece agora, começa/termina no turno |
-| PLANEJADA | projetada p/ turno futuro do mesmo dia |
-| RENDIÇÃO | contínua entre turnos, mesmo posto (não pode ficar vazio) |
-| RECORRENTE | tem regra de repetição (diaria/semanal/anual) + vigência |
+`_listenPostos` usa `.on('value')` sobre `/efetivo/postos`. O RTDB envia **o nó inteiro a cada mudança**, incluindo todas as fotos base64.
 
-### Impacto arquitetural
-Este é o Modo Planejar de verdade. Com recorrência, "Ciclofaixa domingos sem prazo"
-é cadastrada UMA vez e aparece todo domingo automaticamente. A escala de fim de
-semana deixa de ser trabalho semanal — vira configuração única. Transcende o Excel.
+```
+Foto comprimida (900px q72) → ~110 KB → base64 ~146 KB
+100 postos, 60% com foto    → ~8,6 MB por evento de sync
+```
+
+| Cenário | 4G médio | 3G |
+|---------|----------|-----|
+| Turno leve (sem fotos) | 2,6s | 6,7s |
+| Fim de semana (60% com foto) | **20,2s** | **53,7s** |
+
+E o custo **se repete a cada sincronização** — alguém marca uma falta e todos re-baixam tudo.
+
+O `fotosCache` no listener é cosmético: evita reatribuir na memória, mas o download já aconteceu.
+
+**Correção:** mover fotos para `/efetivo/postos_fotos/{postoId}` com carga sob demanda ao expandir detalhes. O nó dos postos cai para ~50 KB e o tempo em 4G médio vai de 20,2s para ~2,6s. Alternativa: Firebase Storage, que é o lugar correto para binários.
+
+### Outros achados (não urgentes)
+- **Busca O(n²):** `opCasaComBusca` varre `S.postos` para cada operação — ~7.500 iterações por tecla no cenário de fim de semana. Índice pré-computado resolveria
+- **innerHTML completo:** ~3.600 nós reconstruídos por `renderMainContent`, chamado de 13 pontos. Parcialmente mitigado pelos `_patchXxx`
+- **`renderRightPanel`** (175 linhas) reconstrói as 80 linhas de efetivo a cada mudança de status
+- **`initCampoUI`** cria `setInterval` sem guard — acumula se chamado duas vezes
+- **Firebase compat** (267 KB) poderia virar modular v9 (~100 KB), mas é refactor de risco médio para ganho modesto
+
+### Saudável
+Listeners balanceados (7 on / 7 off), sem vazamento. `addEventListener` globais no document. Filtros por `escalaId` com `.indexOn` corretos.
+
+---
+
+## 15. Dívida técnica conhecida
+
+Código está ~20-25% acima do ótimo (um sênior faria em ~2.800-3.000 linhas de JS). A causa é iteração — o layout foi reescrito três vezes e cada reescrita deixou sedimento.
+
+**Repetição estrutural que vai gerar bug de divergência:**
+1. **Chips renderizados em dois lugares** (`_qruCardHTML` e `_patchQruCard`) — **já causou bug real** (a falta não aparecia sem refresh). Extrair `_chipHTML()` compartilhado é a prioridade
+2. **Três modais quase idênticos** (nova-op, planejar, editar-pessoa) — um `_modal({titulo, corpo, acoes})` economizaria ~80 linhas
+3. **26 campos de formulário** com estrutura repetida — um `_campo()` cortaria ~100 linhas
+4. **CSS com ~15% de resíduo** de três iterações de layout
+
+**Métodos grandes demais (não geram bug, dificultam leitura):**
+- `_listenConexao()` — 201 linhas, nome não descreve o que faz
+- `renderRightPanel()` — 175 linhas, quatro responsabilidades
+
+**Ordem sugerida quando for refatorar:** `_chipHTML` (previne bug) → `_modal` → quebrar os métodos gigantes → limpeza de CSS.
+
+---
+
+## 16. Backlog
+
+### Urgente
+- [ ] **Fotos fora do nó dos postos** — único item que inviabiliza uso real
+
+### Alta
+- [ ] Fase 3 da recorrência: exceções e editar-esta vs editar-todas
+- [ ] Rendição agendada funcional (operação aparecendo em dois turnos)
+- [ ] Modal de abertura de turno (hoje abre silenciosamente com auto-detect)
+- [ ] Passagem de bastão — UI (estrutura Firebase `/bastao` já existe)
+
+### Média
+- [ ] Relatório mensal (17 abas + TOTAL + BAIRROS)
+- [ ] Histórico de designações `/efetivo/historico/{ano}/{mes}/{diaKey}/`
+- [ ] Rodízio inteligente por score (quem trabalhou menos em cada tipoMissao)
+- [ ] **Virtualização da lista** — numa escala de fim de semana passa de 25 operações facilmente. Confirmado pelo desenvolvedor como cenário real, não hipotético
+
+### Integração com Semáforo
+- [ ] Semáforo lê `/efetivo/recursos` via `.once()` para sugerir agentes no despacho
+- [ ] Nunca listener permanente cruzado entre módulos
+
+---
+
+## 17. Prompt para a próxima sessão
+
+```
+Você é fullstack sênior em Vanilla JS, HTML, CSS e Firebase RTDB.
+Leia CONTEXT_PLANOP.md completamente antes de qualquer mudança.
+
+Arquivos: planop.js (~3770L) + planop.css (~2300L) + index.html (~310L)
+URL: crisstiano07.github.io/NIT_Planop-/
+
+Regras obrigatórias:
+1. Nunca confirm() nativo — inline ou overlay
+2. Nunca popovers flutuantes — accordion inline
+3. Sempre _suppressRender + _patchXxx() em vez de renderMainContent durante edições
+4. Nunca tocar /kanban/* ou /recursos/* (são do Semáforo)
+5. Display em titleCase, banco em MAIÚSCULO
+6. Supervisores fixos Marcos Danilo e Francisco Helder são imutáveis
+7. Fotos: comprimir + _patchFotos() após gravar
+8. signInWithRedirect normal, signInWithPopup em incógnito
+9. _patchQruCard e _qruCardHTML DEVEM renderizar chips idênticos
+10. Busca chama _patchListaOps(), nunca renderMainContent()
+```
+
+---
+
+*CENTRAL OPS v1.2 · AMC Fortaleza · NIT · 22/07/2026*
