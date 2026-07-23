@@ -1131,6 +1131,12 @@ const NIT_PLANOP = (() => {
       const cont = $('main-content');
       if (!cont) return;
 
+      // Se o campo de busca estava focado (ex: listener do Firebase disparou
+      // um re-render no meio da digitação), guardar foco e cursor para restaurar.
+      const buscaEl   = document.querySelector('.ops-search');
+      const tinhaFoco = buscaEl && document.activeElement === buscaEl;
+      const cursorPos = tinhaFoco ? buscaEl.selectionStart : null;
+
       // Sem turno aberto
       if (!S.escalaAtiva) {
         cont.innerHTML = `<div class="estado-vazio">
@@ -1157,31 +1163,8 @@ const NIT_PLANOP = (() => {
         return 'extraordinario';
       };
 
-      // Busca ampliada: bairro, tipo, endereço de posto e NOME DE PESSOA.
-      // Com busca ativa, atravessa todos os turnos (como o Modo Campo) —
-      // encontrar alguém não deve exigir saber em que turno ela está.
+      // O valor cru da busca vai para o input (preserva o que foi digitado)
       const busca = S._buscaOps || '';
-
-      const opCasaComBusca = (opId, op) => {
-        if (!busca) return true;
-        if ((op.bairro||'').toLowerCase().includes(busca)) return true;
-        if ((op.tipoMissao||'').toLowerCase().includes(busca)) return true;
-        if ((op.nome||'').toLowerCase().includes(busca)) return true;
-        // Postos da operação: endereço e pessoas designadas
-        return Object.values(S.postos).some(p => {
-          if (p.operacaoId !== opId) return false;
-          if ((p.local||'').toLowerCase().includes(busca)) return true;
-          return Object.values(p.orientadores||{})
-            .some(o => (o.nome||'').toLowerCase().includes(busca));
-        });
-      };
-
-      let ops = Object.entries(S.operacoes)
-        .filter(([,op]) => operacaoAconteceEm(op, dataVista))
-        // Sem busca: só o turno selecionado. Com busca: todos os turnos.
-        .filter(([,op]) => busca ? true : turnoDaOp(op) === turnoVisto)
-        .filter(([id,op]) => opCasaComBusca(id, op))
-        .sort(([,a],[,b]) => (a.ordem||0)-(b.ordem||0));
 
       // Contagem por turno (para badges nas abas)
       const contPorTurno = {};
@@ -1226,9 +1209,13 @@ const NIT_PLANOP = (() => {
               onclick="NIT_PLANOP.UI.voltarHoje()">${dataLabel}</button>
             <button class="data-nav-btn" onclick="NIT_PLANOP.UI.navegarData(1)" aria-label="Próximo dia">›</button>
           </div>
-          <input class="ops-search" placeholder="Buscar operação, posto, endereço ou pessoa..."
-            value="${esc(busca)}"
-            oninput="NIT_PLANOP.UI.filtrarOps(this.value)">
+          <div class="ops-search-wrap">
+            <input class="ops-search" placeholder="Buscar operação, posto, endereço ou pessoa..."
+              value="${esc(busca)}"
+              oninput="NIT_PLANOP.UI.filtrarOps(this.value)">
+            ${busca ? `<button class="ops-search-clear" title="Limpar busca"
+              onclick="NIT_PLANOP.UI.limparBusca()">×</button>` : ''}
+          </div>
           <button class="btn-ghost-sm" id="btn-expandir-ops"
             onclick="NIT_PLANOP.UI.toggleExpandirOps()">Expandir todas</button>
           ${canWrite() ? `<button class="btn-nova-op-center" onclick="NIT_PLANOP.UI.toggleNovaOp()">
@@ -1236,10 +1223,56 @@ const NIT_PLANOP = (() => {
           </button>` : ''}
         </div>
 
-        <!-- Resultados de pessoas (quando a busca casa com nomes) -->
-        ${busca ? UI._resultadoPessoasHTML(busca, dataVista) : ''}
+        <!-- Resultados + lista: container re-renderizável isoladamente,
+             para que a busca não destrua o próprio campo de input -->
+        <div id="ops-resultado-wrap">${UI._listaOpsHTML()}</div>`;
 
-        <!-- Lista de operações -->
+      // Restaurar foco e cursor do campo de busca, se estava ativo
+      if (tinhaFoco) {
+        const novoEl = document.querySelector('.ops-search');
+        if (novoEl) {
+          novoEl.focus();
+          try { novoEl.setSelectionRange(cursorPos, cursorPos); } catch {}
+        }
+      }
+    },
+
+    // Monta só a parte que muda com a busca/turno/data.
+    // Chamada isolada por _patchListaOps() para preservar o foco do input.
+    _listaOpsHTML() {
+      if (!S.escalaAtiva) return '';
+      const dataVista  = S._dataVista || getDataHoje();
+      const turnoVisto = S._turnoVisto || S.escalas[S.escalaAtiva]?.turno || 'manha';
+      const busca      = (S._buscaOps || '').toLowerCase().trim();
+
+      const turnoDaOp = (op) => {
+        if (op.turno && CFG.TURNOS[op.turno]) return op.turno;
+        const esc2 = S.escalas[op.escalaId];
+        if (esc2?.turno && CFG.TURNOS[esc2.turno]) return esc2.turno;
+        return 'extraordinario';
+      };
+
+      const opCasaComBusca = (opId, op) => {
+        if (!busca) return true;
+        if ((op.bairro||'').toLowerCase().includes(busca)) return true;
+        if ((op.tipoMissao||'').toLowerCase().includes(busca)) return true;
+        if ((op.nome||'').toLowerCase().includes(busca)) return true;
+        return Object.values(S.postos).some(p => {
+          if (p.operacaoId !== opId) return false;
+          if ((p.local||'').toLowerCase().includes(busca)) return true;
+          return Object.values(p.orientadores||{})
+            .some(o => (o.nome||'').toLowerCase().includes(busca));
+        });
+      };
+
+      const ops = Object.entries(S.operacoes)
+        .filter(([,op]) => operacaoAconteceEm(op, dataVista))
+        .filter(([,op]) => busca ? true : turnoDaOp(op) === turnoVisto)
+        .filter(([id,op]) => opCasaComBusca(id, op))
+        .sort(([,a],[,b]) => (a.ordem||0)-(b.ordem||0));
+
+      return `
+        ${busca ? UI._resultadoPessoasHTML(busca, dataVista) : ''}
         <div class="ops-center-lista" id="ops-center-lista">
           ${ops.length
             ? ops.map(([id,op]) => UI._opCardHTML(id, op, busca ? turnoDaOp(op) : null)).join('')
@@ -1251,6 +1284,12 @@ const NIT_PLANOP = (() => {
                 ${!busca && canWrite() ? `<button class="btn-ghost-sm" onclick="NIT_PLANOP.UI.toggleNovaOp()">Criar operação</button>` : ''}
               </div>`}
         </div>`;
+    },
+
+    // Atualiza só a lista — o input de busca permanece vivo e focado.
+    _patchListaOps() {
+      const wrap = $('ops-resultado-wrap');
+      if (wrap) wrap.innerHTML = UI._listaOpsHTML();
     },
 
     // Mostra onde cada pessoa encontrada está — posto, operação e turno.
@@ -1566,10 +1605,20 @@ const NIT_PLANOP = (() => {
       UI.renderMainContent();
     },
 
-    filtrarOps(val) {
-      S._buscaOps = (val||'').toLowerCase().trim();
+    limparBusca() {
+      S._buscaOps = '';
       clearTimeout(S._opsDebounce);
-      S._opsDebounce = setTimeout(() => UI.renderMainContent(), 150);
+      UI.renderMainContent();
+      setTimeout(() => document.querySelector('.ops-search')?.focus(), 30);
+    },
+
+    filtrarOps(val) {
+      // Guarda o valor cru — o lowercase é aplicado só na comparação.
+      // Assim o que o usuário digitou continua na tela como digitou.
+      S._buscaOps = val || '';
+      clearTimeout(S._opsDebounce);
+      // Re-renderiza SÓ a lista: o input não é destruído, o foco fica.
+      S._opsDebounce = setTimeout(() => UI._patchListaOps(), 150);
     },
 
     // ── QRU CARD
@@ -3657,6 +3706,11 @@ const NIT_PLANOP = (() => {
   // Escape global — fecha qualquer sobreposição aberta (padrão de mercado)
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    // Busca ativa com foco no campo → limpar antes de fechar outras camadas
+    const bs = document.querySelector('.ops-search');
+    if (bs && document.activeElement === bs && bs.value) {
+      UI.limparBusca(); return;
+    }
     // Settings menu
     const sm = $('settings-menu');
     if (sm && !sm.classList.contains('hidden')) {
