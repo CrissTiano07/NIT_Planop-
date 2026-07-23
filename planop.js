@@ -785,7 +785,6 @@ const NIT_PLANOP = (() => {
         (value) => {
           const hidden = $('nop-tipo');
           if (hidden) hidden.value = value;
-          UI._autoNomeOp();
         }
       );
     },
@@ -989,14 +988,6 @@ const NIT_PLANOP = (() => {
 
     fecharAddPosto(opId) {
       document.querySelectorAll('.posto-form-inline').forEach(el => el.remove());
-    },
-
-    _autoNomeOp() {
-      const tipo   = $('nop-tipo')?.value || '';
-      const bairro = $('nop-bairro')?.value?.trim() || '';
-      const nome   = $('nop-nome');
-      if (!nome || nome._editado) return;
-      nome.value = tipo || bairro || '';
     },
 
     // ── SHIFT BAR
@@ -1755,7 +1746,7 @@ const NIT_PLANOP = (() => {
     _initBairroCombo() {
       UI._combo('nop-bairro', 'nop-bairro-list',
         CFG.BAIRROS.map(b => ({ value: b, label: b })),
-        () => UI._autoNomeOp()
+        () => {}
       );
     },
 
@@ -2717,11 +2708,10 @@ const NIT_PLANOP = (() => {
       form.classList.remove('hidden'); // form sempre visível dentro do overlay
       if (!aberto) {
         // Limpar campos e resetar botão (pode ter ficado em "Criando...")
-        [$('nop-bairro'), $('nop-nome')].forEach(el => { if(el) el.value=''; });
+        const b = $('nop-bairro'); if (b) b.value = '';
         const hidden = $('nop-tipo'); if (hidden) hidden.value = '';
         const tipoInp = $('nop-tipo-input'); if (tipoInp) tipoInp.value = '';
         const hor = $('nop-horario'); if(hor) hor.value='';
-        const nome = $('nop-nome'); if(nome) nome._editado = false;
         // Resetar recorrência para 'única'
         window._nopDias = new Set();
         UI.selRecorrencia('unica');
@@ -3101,8 +3091,9 @@ const NIT_PLANOP = (() => {
       const bairro = $('nop-bairro')?.value?.trim();
       const tipo   = $('nop-tipo')?.value;
       const hor    = $('nop-horario')?.value;
-      const nome   = $('nop-nome')?.value?.trim() ||
-        tipo || bairro || 'OPERAÇÃO';
+      // Nome gerado internamente — não é exibido (o card mostra bairro + tipo).
+      // Mantido no banco para busca e compatibilidade com relatórios.
+      const nome = [bairro, tipo].filter(Boolean).join(' — ') || 'OPERAÇÃO';
 
       if (!bairro) { toast('Bairro é obrigatório','warning'); return; }
       if (!tipo)   { toast('Selecione o tipo de missão','warning'); return; }
