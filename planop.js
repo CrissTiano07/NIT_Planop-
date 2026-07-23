@@ -1112,6 +1112,8 @@ const NIT_PLANOP = (() => {
 
     // ── LISTA DE OPERAÇÕES (sidebar)
     renderOpsList() {
+      // Lista de operações migrou para o painel central (renderMainContent).
+      // Mantida como no-op para não quebrar chamadas existentes.
       const lista = $('ops-lista');
       if (!lista) return;
       const busca = S._buscaEquipes.toLowerCase().trim();
@@ -1258,75 +1260,202 @@ const NIT_PLANOP = (() => {
         return;
       }
 
-      // Sem operação selecionada — seleciona a primeira automaticamente
-      if (!S.operacaoSel) {
-        const primeira = Object.keys(S.operacoes)
-          .find(id => S.operacoes[id].escalaId === S.escalaAtiva);
-        if (primeira) { S.operacaoSel = primeira; UI.renderOpsList(); }
-      }
+      const dataVista  = S._dataVista || getDataHoje();
+      const turnoVisto = S._turnoVisto || S.escalas[S.escalaAtiva]?.turno || 'manha';
 
-      const op = S.operacoes[S.operacaoSel];
-      if (!op) {
-        cont.innerHTML = `<div class="estado-vazio">
-          <div class="estado-vazio-icon">↑</div>
-          <div class="estado-vazio-titulo">Selecione uma operação</div>
-          <div class="estado-vazio-sub">Clique em uma operação na barra lateral para ver os postos.</div>
-        </div>`;
-        return;
-      }
+      // Turno de uma operação
+      const turnoDaOp = (op) => {
+        if (op.turno && CFG.TURNOS[op.turno]) return op.turno;
+        const esc = S.escalas[op.escalaId];
+        if (esc?.turno && CFG.TURNOS[esc.turno]) return esc.turno;
+        return 'extraordinario';
+      };
 
-      const postos = Object.entries(S.postos)
-        .filter(([,p]) => p.operacaoId === S.operacaoSel)
-        .sort(([,a],[,b]) => (a.numero||0)-(b.numero||0));
+      // Operações do turno selecionado, projetadas pela recorrência
+      const busca = S._buscaOps || '';
+      let ops = Object.entries(S.operacoes)
+        .filter(([,op]) => operacaoAconteceEm(op, dataVista))
+        .filter(([,op]) => turnoDaOp(op) === turnoVisto)
+        .sort(([,a],[,b]) => (a.ordem||0)-(b.ordem||0));
+      if (busca) ops = ops.filter(([,o]) =>
+        (o.nome||'').toLowerCase().includes(busca) ||
+        (o.bairro||'').toLowerCase().includes(busca));
+
+      // Contagem por turno (para badges nas abas)
+      const contPorTurno = {};
+      CFG.TURNOS_ORDEM.forEach(t => { contPorTurno[t] = 0; });
+      Object.entries(S.operacoes).forEach(([,op]) => {
+        if (operacaoAconteceEm(op, dataVista)) contPorTurno[turnoDaOp(op)]++;
+      });
+
+      // Label da data
+      const hoje = getDataHoje();
+      let dataLabel = 'Hoje';
+      if (dataVista !== hoje) {
+        const [y,m,d] = dataVista.split('-').map(Number);
+        const dt = new Date(y, m-1, d);
+        const dias = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+        dataLabel = `${dias[dt.getDay()]}, ${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}`;
+      }
 
       cont.innerHTML = `
-        <!-- Top bar -->
-        <div class="op-topbar">
-          <div class="op-topbar-icon">${opIconLg(op.tipoMissao)}</div>
-          <div class="op-topbar-info">
-            <div class="op-topbar-name">
-              ${esc(titleCase(op.bairro||op.nome||'—'))}
-              <span class="badge-ativo">ATIVO</span>
-            </div>
-            <div class="op-topbar-sub">
-              ${[titleCase(op.tipoMissao||''), op.horario ? `Início ${op.horario}h` : ''].filter(Boolean).join(' · ')}
-            </div>
-          </div>
-          <div class="op-topbar-right">
-            <div class="modo-btns">
-              <button class="modo-btn modo-btn-active">
-                ▶ EXECUTAR
-              </button>
-              <button class="modo-btn modo-btn-disabled"
-                title="Em desenvolvimento — disponível na próxima versão"
-                aria-disabled="true">
-                📅 PLANEJAR
-              </button>
-            </div>
-            <span class="topbar-date">Hoje</span>
-          </div>
+        <!-- Abas de turno -->
+        <div class="turno-tabs">
+          ${CFG.TURNOS_ORDEM.map(t => {
+            const cfg = CFG.TURNOS[t];
+            const ativo = t === turnoVisto;
+            const atual = S.escalas[S.escalaAtiva]?.turno === t;
+            const n = contPorTurno[t];
+            return `<button class="turno-tab ${ativo?'active':''}"
+              onclick="NIT_PLANOP.UI.selTurno('${t}')">
+              <span class="tt-nome">${cfg.label}</span>
+              ${cfg.inicio ? `<span class="tt-horario">${cfg.inicio}–${cfg.fim}</span>` : ''}
+              ${n > 0 ? `<span class="tt-count">${n}</span>` : ''}
+              ${atual ? '<span class="tt-agora">agora</span>' : ''}
+            </button>`;
+          }).join('')}
         </div>
 
-
-        <!-- QRUs -->
-        <div class="qru-section-header">
-          <span class="qru-section-label">Postos / QRUs</span>
-          <input class="qru-search" placeholder="Filtrar postos..."
-            oninput="NIT_PLANOP.UI.filtrarQrus(this.value)">
-          <button class="btn-expandir" id="btn-expandir-todos"
-            onclick="NIT_PLANOP.UI.toggleExpandirTodos()">
-            Expandir todos
-          </button>
-          ${canWrite() ? `<button class="btn-add-posto"
-            onclick="NIT_PLANOP.UI.abrirAddPosto('${S.operacaoSel}')">+ Posto</button>` : ''}
+        <!-- Barra de data + ações -->
+        <div class="ops-toolbar">
+          <div class="data-nav">
+            <button class="data-nav-btn" onclick="NIT_PLANOP.UI.navegarData(-1)" aria-label="Dia anterior">‹</button>
+            <button class="data-nav-label ${dataVista!==hoje?'data-outra':''}"
+              onclick="NIT_PLANOP.UI.voltarHoje()">${dataLabel}</button>
+            <button class="data-nav-btn" onclick="NIT_PLANOP.UI.navegarData(1)" aria-label="Próximo dia">›</button>
+          </div>
+          <input class="ops-search" placeholder="Filtrar operações..."
+            value="${esc(busca)}"
+            oninput="NIT_PLANOP.UI.filtrarOps(this.value)">
+          ${canWrite() ? `<button class="btn-nova-op-center" onclick="NIT_PLANOP.UI.toggleNovaOp()">
+            + Nova Operação
+          </button>` : ''}
         </div>
 
-        <div class="qrus-lista" id="qrus-lista">
-          ${postos.map(([postoId,posto]) => UI._qruCardHTML(postoId,posto)).join('')}
-          ${!postos.length ? `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:12px">
-            Nenhum posto cadastrado. Clique em "+ Posto" para adicionar.
-          </div>` : ''}
+        <!-- Lista de operações -->
+        <div class="ops-center-lista" id="ops-center-lista">
+          ${ops.length
+            ? ops.map(([id,op]) => UI._opCardHTML(id, op)).join('')
+            : `<div class="ops-vazio">
+                <div class="ops-vazio-icon">○</div>
+                <div class="ops-vazio-txt">Nenhuma operação no turno ${CFG.TURNOS[turnoVisto].label.toLowerCase()}</div>
+                ${canWrite() ? `<button class="btn-ghost-sm" onclick="NIT_PLANOP.UI.toggleNovaOp()">Criar operação</button>` : ''}
+              </div>`}
         </div>`;
+    },
+
+    // Card de operação no centro — expande para mostrar os postos
+    _opCardHTML(opId, op) {
+      const expandido = S._opsExpandidas?.has(opId);
+      const postos = Object.entries(S.postos)
+        .filter(([,p]) => p.operacaoId === opId)
+        .sort(([,a],[,b]) => (a.numero||0)-(b.numero||0));
+
+      const dot        = opDot(opId);
+      const planejada  = op.status === 'planejada';
+      const rendicao   = op.rendicao === true;
+      const t          = CFG.TURNOS[(op.turno || S.escalas[op.escalaId]?.turno || 'extraordinario')];
+      const horaOp     = op.horario || '';
+      const foraPadrao = horaOp && t?.inicio && horaOp !== t.inicio;
+
+      // Cobertura
+      const totalPostos = postos.length;
+      const vazios      = postos.filter(([,p]) => !Object.keys(p.orientadores||{}).length).length;
+      const pessoas     = postos.reduce((s,[,p]) => s + Object.keys(p.orientadores||{}).length, 0);
+      const faltas      = postos.reduce((s,[,p]) =>
+        s + Object.values(p.orientadores||{}).filter(o => o.faltou).length, 0);
+
+      // Rótulo de recorrência
+      const recLabel = (() => {
+        const r = op.recorrencia;
+        if (!r || r === 'unica') return '';
+        const fmt = d => d ? d.split('-').reverse().slice(0,2).join('/') : '';
+        if (r === 'diaria')  return op.dataFim ? `Diária · até ${fmt(op.dataFim)}` : 'Diária · sem prazo';
+        if (r === 'anual')   return op.dataInicio ? `Anual · ${fmt(op.dataInicio)}` : 'Anual';
+        if (r === 'semanal') {
+          const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+          const nomes = (op.diasSemana||[]).map(d => dias[d]).join(', ');
+          return op.dataFim ? `${nomes} · até ${fmt(op.dataFim)}` : `${nomes} · sem prazo`;
+        }
+        return '';
+      })();
+
+      return `<div class="op-card ${expandido?'expandido':''} ${planejada?'op-planejada':''}" id="opcard-${opId}">
+        <div class="op-card-header" onclick="NIT_PLANOP.UI.toggleOpExpand('${opId}')">
+          <span class="op-card-chevron">${expandido?'▾':'▸'}</span>
+          <div class="op-card-icon">${opIcon(op.tipoMissao)}</div>
+          <div class="op-card-info">
+            <div class="op-card-nome">
+              ${esc(titleCase(op.bairro||op.nome||'—'))}
+              ${horaOp ? `<span class="op-card-hora${foraPadrao?' fora-padrao':''}"
+                ${foraPadrao?'title="Horário difere do padrão do turno"':''}>${esc(horaOp)}${foraPadrao?' ⚠':''}</span>` : ''}
+              ${planejada ? '<span class="ops-badge-plan">PLANEJADA</span>' : ''}
+              ${rendicao ? '<span class="ops-badge-rend">RENDIÇÃO</span>' : ''}
+            </div>
+            <div class="op-card-sub">
+              ${esc(titleCase(op.tipoMissao||''))}
+              ${recLabel ? `<span class="ops-recorrencia">${esc(recLabel)}</span>` : ''}
+            </div>
+          </div>
+          <div class="op-card-metrics">
+            <span class="opm">${totalPostos} posto${totalPostos!==1?'s':''}</span>
+            ${pessoas > 0 ? `<span class="opm opm-ok">${pessoas - faltas} em campo</span>` : ''}
+            ${faltas > 0 ? `<span class="opm opm-falta">${faltas} ⚠</span>` : ''}
+            ${vazios > 0 ? `<span class="opm opm-vazio">${vazios} vazio${vazios!==1?'s':''}</span>` : ''}
+          </div>
+          <span class="ops-status-dot ${dot}"></span>
+          ${canWrite() ? `
+          <div class="op-card-menu-wrap" onclick="event.stopPropagation()">
+            <button class="btn-ops-menu" onclick="NIT_PLANOP.UI.toggleOpsMenu('${opId}',event)"
+              aria-label="Opções da operação">···</button>
+            <div class="ops-ctx-menu hidden" id="ops-menu-${opId}">
+              <button onclick="NIT_PLANOP.UI.abrirEditOp('${opId}')">✏ Editar</button>
+              <button onclick="NIT_PLANOP.UI.abrirPlanejar('${opId}')">📅 Planejar p/ outro turno</button>
+              <button class="danger" onclick="NIT_PLANOP.Actions.deletarOp('${opId}')">🗑 Deletar</button>
+            </div>
+          </div>` : ''}
+        </div>
+
+        <div class="op-card-body ${expandido?'':'hidden'}">
+          <div class="qru-section-header">
+            <span class="qru-section-label">Postos / QRUs</span>
+            ${canWrite() ? `<button class="btn-add-posto"
+              onclick="event.stopPropagation();NIT_PLANOP.UI.abrirAddPosto('${opId}')">+ Posto</button>` : ''}
+          </div>
+          <div class="qrus-lista" id="qrus-lista-${opId}">
+            ${postos.length
+              ? postos.map(([pid,p]) => UI._qruCardHTML(pid,p)).join('')
+              : `<div class="qru-vazio">Nenhum posto. Clique em "+ Posto" para adicionar.</div>`}
+          </div>
+        </div>
+      </div>`;
+    },
+
+    toggleOpExpand(opId) {
+      S._opsExpandidas = S._opsExpandidas || new Set();
+      if (S._opsExpandidas.has(opId)) S._opsExpandidas.delete(opId);
+      else S._opsExpandidas.add(opId);
+      S.operacaoSel = opId;
+      const card = document.getElementById(`opcard-${opId}`);
+      const body = card?.querySelector('.op-card-body');
+      const chev = card?.querySelector('.op-card-chevron');
+      if (card && body) {
+        const aberto = S._opsExpandidas.has(opId);
+        card.classList.toggle('expandido', aberto);
+        body.classList.toggle('hidden', !aberto);
+        if (chev) chev.textContent = aberto ? '▾' : '▸';
+      }
+    },
+
+    selTurno(turno) {
+      S._turnoVisto = turno;
+      UI.renderMainContent();
+    },
+
+    filtrarOps(val) {
+      S._buscaOps = (val||'').toLowerCase().trim();
+      clearTimeout(S._opsDebounce);
+      S._opsDebounce = setTimeout(() => UI.renderMainContent(), 150);
     },
 
     // ── QRU CARD
@@ -2000,9 +2129,8 @@ const NIT_PLANOP = (() => {
 
       document.getElementById('edit-op-form')?.remove();
 
-      // Bug 1 fix: o form de edição de operação fica na sidebar,
-      // abaixo do item da operação — não no painel principal
-      const opItem = document.querySelector(`#ops-lista .ops-item[onclick*="'${opId}'"]`);
+      // Form de edição ancorado no card da operação (painel central)
+      const opItem = document.getElementById(`opcard-${opId}`);
       if (!opItem) return;
 
       const formHTML = `
@@ -2581,10 +2709,12 @@ const NIT_PLANOP = (() => {
     },
 
     toggleNovaOp() {
-      const form = $('nova-op-form');
-      if (!form) return;
-      const aberto = !form.classList.contains('hidden');
-      form.classList.toggle('hidden', aberto);
+      const overlay = $('nova-op-overlay');
+      const form    = $('nova-op-form');
+      if (!overlay || !form) return;
+      const aberto = !overlay.classList.contains('hidden');
+      overlay.classList.toggle('hidden', aberto);
+      form.classList.remove('hidden'); // form sempre visível dentro do overlay
       if (!aberto) {
         // Limpar campos e resetar botão (pode ter ficado em "Criando...")
         [$('nop-bairro'), $('nop-nome')].forEach(el => { if(el) el.value=''; });
@@ -2608,7 +2738,7 @@ const NIT_PLANOP = (() => {
     },
 
     fecharNovaOp() {
-      $('nova-op-form')?.classList.add('hidden');
+      $('nova-op-overlay')?.classList.add('hidden');
     },
 
     // Autocomplete de bairro no formulário inline
@@ -3476,6 +3606,7 @@ const NIT_PLANOP = (() => {
     ['encerrar-confirm-overlay','editar-turno-form','editar-pessoa-form','cadastrar-pessoa-form'].forEach(id => {
       document.getElementById(id)?.remove();
     });
+    $('nova-op-overlay')?.classList.add('hidden');
     // Inline confirms
     document.querySelectorAll('.inline-confirm').forEach(el => el.remove());
     // Drop aberto
