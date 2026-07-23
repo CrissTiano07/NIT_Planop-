@@ -567,7 +567,9 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 /* QRU cards */
 .qrus-lista { display: flex; flex-direction: column; gap: var(--space-4); }
 .qru-card {
-  background: var(--bg-surface); border: 1px solid var(--border);
+  background: var(--bg-surface);
+  /* Borda neutra e discreta — a cor semântica vive só na barra lateral */
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   /* overflow visible — o menu ··· (position absolute) precisa escapar do card */
   overflow: visible;
@@ -576,9 +578,12 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 .qru-card-header { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 .qru-card:not(.expanded) .qru-card-header { border-radius: var(--radius-lg); }
-.qru-card.status-vazio    { border-left-color: var(--danger); }
-.qru-card.status-parcial  { border-left-color: var(--warning); }
-.qru-card.status-completo { border-left-color: var(--success); }
+/* Barras semânticas em versão dessaturada: preservam o código de cor
+   (vermelho/âmbar/verde) sem o brilho que gera halo e cansaço visual.
+   O sinal forte fica no badge compacto, que tem borda curta. */
+.qru-card.status-vazio    { border-left-color: rgba(239,68,68,0.55); }
+.qru-card.status-parcial  { border-left-color: rgba(245,158,11,0.5); }
+.qru-card.status-completo { border-left-color: rgba(34,197,94,0.5); }
 
 .qru-card-header {
   display: flex; align-items: center; gap: var(--space-3);
@@ -2036,7 +2041,15 @@ input:focus {
   transition: border-color var(--dur-fast);
 }
 .op-card:hover { border-color: var(--border-strong); }
-.op-card.expandido { border-color: var(--accent); }
+.op-card.expandido {
+  /* Conforto visual: sem borda azul saturada nos 4 lados.
+     Hierarquia por elevação de fundo + barra lateral única.
+     Linhas finas saturadas (sobretudo azul) causam halo em
+     olhos com astigmatismo — reduzimos o comprimento de borda em 75%. */
+  background: var(--bg-card);
+  border-color: var(--border-strong);
+  border-left: 3px solid rgba(88,166,255,0.55);
+}
 .op-card.op-planejada { opacity: 0.72; border-style: dashed; }
 
 .op-card-header {
@@ -2252,4 +2265,27 @@ input:focus {
   color: var(--accent); background: var(--accent-dim);
   border: 1px solid var(--accent);
   padding: 1px 5px; border-radius: 4px; margin-left: 4px;
+}
+
+/* ═══ CONFORTO VISUAL — ajustes finos ═══════════════════
+   Princípio: hierarquia por elevação de fundo, não por
+   linhas saturadas. Bordas estruturais em baixa croma;
+   cor forte só em elementos compactos (badges, dots). */
+
+/* Header de seção de postos comporta os dois botões */
+.qru-section-header {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.qru-section-header .qru-section-label { flex: 1; }
+
+/* Avatares: reduzir brilho sem perder a identidade de turno.
+   Amarelo/âmbar em alta luminância é a cor que mais gera glare
+   em fundo escuro — leve redução mantém o código legível. */
+.staff-avatar, .chip-avatar {
+  filter: saturate(0.88);
+}
+
+/* Cards aninhados: fundo levemente distinto em vez de borda forte */
+.op-card.expandido .qru-card {
+  background: var(--bg-surface);
 }
