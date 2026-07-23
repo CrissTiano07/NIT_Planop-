@@ -2190,3 +2190,66 @@ input:focus {
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--border);
 }
+
+/* ═══ BUSCA DE PESSOAS (resultados) ═════════════════════ */
+.busca-pessoas {
+  margin: var(--space-3) var(--space-4) 0;
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.busca-pessoas-label {
+  padding: 8px var(--space-4) 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--accent);
+  border-bottom: 1px solid var(--border);
+}
+.busca-pessoa-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 8px var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.busca-pessoa-row:last-child { border-bottom: none; }
+.bp-info { flex: 1; min-width: 0; }
+.bp-nome {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  display: flex; align-items: center; gap: 6px;
+}
+.bp-cargo {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+  color: var(--text-muted); text-transform: uppercase;
+}
+.bp-onde {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-top: 2px; font-size: 11px;
+}
+.bp-turno {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+  color: var(--accent); background: var(--accent-dim);
+  padding: 1px 6px; border-radius: 4px; text-transform: uppercase;
+}
+.bp-local { color: var(--text-tertiary); }
+.bp-faltou {
+  font-size: 9px; font-weight: 800; color: var(--danger);
+  background: var(--danger-dim); border: 1px solid var(--danger);
+  padding: 0 5px; border-radius: 3px;
+}
+.bp-livre { color: var(--text-muted); font-style: italic; }
+.bp-livre.disponivel { color: var(--success); font-style: normal; }
+.bp-ir {
+  margin-left: auto; flex-shrink: 0;
+  background: none; border: 1px solid var(--border-strong);
+  border-radius: var(--radius); padding: 2px 8px;
+  font-size: 10px; font-weight: 600; color: var(--text-tertiary);
+  cursor: pointer; transition: all var(--dur-fast);
+}
+.bp-ir:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Badge de turno em resultado de busca cross-turno */
+.ops-badge-turno {
+  font-size: 8px; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--accent); background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  padding: 1px 5px; border-radius: 4px; margin-left: 4px;
+}
