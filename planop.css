@@ -2093,3 +2093,177 @@ input:focus {
   color: var(--accent); border-color: var(--accent);
   background: var(--accent-dim);
 }
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT CENTRAL — abas de turno + operações expansíveis
+   ═══════════════════════════════════════════════════════ */
+
+/* Abas de turno */
+.turno-tabs {
+  display: flex; gap: 2px;
+  padding: var(--space-3) var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+.turno-tab {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 1px; padding: 8px var(--space-4) 10px;
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; transition: all var(--dur-fast);
+  position: relative;
+}
+.turno-tab:hover { background: var(--surface-hover); }
+.turno-tab.active {
+  border-bottom-color: var(--accent);
+}
+.tt-nome {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--text-tertiary); text-transform: uppercase;
+}
+.turno-tab.active .tt-nome { color: var(--accent); }
+.tt-horario {
+  font-size: 10px; font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+.tt-count {
+  position: absolute; top: 6px; right: 6px;
+  font-size: 9px; font-weight: 700;
+  background: var(--bg-card); color: var(--text-tertiary);
+  border-radius: 8px; padding: 1px 5px;
+  font-family: var(--font-mono);
+}
+.turno-tab.active .tt-count { background: var(--accent-dim); color: var(--accent); }
+.tt-agora {
+  font-size: 8px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--success);
+  margin-top: 1px;
+}
+
+/* Toolbar de data + busca + nova op */
+.ops-toolbar {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.ops-search {
+  flex: 1; height: 32px; padding: 0 var(--space-3);
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-primary);
+  font-size: 12px; font-family: var(--font-ui);
+}
+.ops-search:focus { border-color: var(--accent); outline: none; }
+.btn-nova-op-center {
+  height: 32px; padding: 0 var(--space-4);
+  background: var(--accent); border: none;
+  border-radius: var(--radius); color: #0d1826;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: opacity var(--dur-fast); white-space: nowrap;
+}
+.btn-nova-op-center:hover { opacity: 0.88; }
+
+/* Lista de operações no centro */
+.ops-center-lista {
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+
+/* Card de operação */
+.op-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: visible;
+  transition: border-color var(--dur-fast);
+}
+.op-card:hover { border-color: var(--border-strong); }
+.op-card.expandido { border-color: var(--accent); }
+.op-card.op-planejada { opacity: 0.72; border-style: dashed; }
+
+.op-card-header {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+}
+.op-card-chevron {
+  font-size: 11px; color: var(--text-muted);
+  width: 12px; flex-shrink: 0;
+}
+.op-card-icon {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-dim); border-radius: 8px;
+  color: var(--accent);
+}
+.op-card-info { flex: 1; min-width: 0; }
+.op-card-nome {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.op-card-hora {
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--text-tertiary); font-weight: 500;
+}
+.op-card-hora.fora-padrao { color: var(--warning); font-weight: 700; }
+.op-card-sub {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: 11px; color: var(--text-tertiary); margin-top: 2px;
+}
+.op-card-metrics {
+  display: flex; align-items: center; gap: var(--space-2);
+  flex-shrink: 0;
+}
+.opm {
+  font-size: 10px; font-weight: 600;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.opm-ok    { color: var(--success); }
+.opm-falta { color: var(--danger); }
+.opm-vazio { color: var(--warning); }
+.op-card-menu-wrap { position: relative; flex-shrink: 0; }
+
+.op-card-body {
+  border-top: 1px solid var(--border);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  animation: slideDown var(--dur-normal) var(--ease-out);
+}
+.qru-vazio {
+  padding: var(--space-4); text-align: center;
+  font-size: 12px; color: var(--text-muted);
+}
+
+/* Estado vazio da lista de operações */
+.ops-vazio {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+}
+.ops-vazio-icon { font-size: 32px; color: var(--text-muted); opacity: 0.4; }
+.ops-vazio-txt { font-size: 13px; color: var(--text-tertiary); }
+
+/* Overlay do form de nova operação */
+.nova-op-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 600; animation: fadeIn var(--dur-fast);
+  padding: var(--space-4);
+}
+.nova-op-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  width: 380px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+.nova-op-dialog-header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
+}
+.nova-op-dialog .nova-op-form {
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
