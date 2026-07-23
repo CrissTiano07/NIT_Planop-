@@ -1110,11 +1110,6 @@ const NIT_PLANOP = (() => {
     // ── LISTA DE OPERAÇÕES (sidebar)
 
 
-    filtrarOps(val) {
-      S._buscaEquipes = val;
-      const clear = $('sidebar-busca-clear');
-      if (clear) clear.classList.toggle('hidden', !val);
-    },
 
     limparBuscaOps() {
       const inp = $('sidebar-busca');
@@ -1153,15 +1148,31 @@ const NIT_PLANOP = (() => {
         return 'extraordinario';
       };
 
-      // Operações do turno selecionado, projetadas pela recorrência
+      // Busca ampliada: bairro, tipo, endereço de posto e NOME DE PESSOA.
+      // Com busca ativa, atravessa todos os turnos (como o Modo Campo) —
+      // encontrar alguém não deve exigir saber em que turno ela está.
       const busca = S._buscaOps || '';
+
+      const opCasaComBusca = (opId, op) => {
+        if (!busca) return true;
+        if ((op.bairro||'').toLowerCase().includes(busca)) return true;
+        if ((op.tipoMissao||'').toLowerCase().includes(busca)) return true;
+        if ((op.nome||'').toLowerCase().includes(busca)) return true;
+        // Postos da operação: endereço e pessoas designadas
+        return Object.values(S.postos).some(p => {
+          if (p.operacaoId !== opId) return false;
+          if ((p.local||'').toLowerCase().includes(busca)) return true;
+          return Object.values(p.orientadores||{})
+            .some(o => (o.nome||'').toLowerCase().includes(busca));
+        });
+      };
+
       let ops = Object.entries(S.operacoes)
         .filter(([,op]) => operacaoAconteceEm(op, dataVista))
-        .filter(([,op]) => turnoDaOp(op) === turnoVisto)
+        // Sem busca: só o turno selecionado. Com busca: todos os turnos.
+        .filter(([,op]) => busca ? true : turnoDaOp(op) === turnoVisto)
+        .filter(([id,op]) => opCasaComBusca(id, op))
         .sort(([,a],[,b]) => (a.ordem||0)-(b.ordem||0));
-      if (busca) ops = ops.filter(([,o]) =>
-        (o.nome||'').toLowerCase().includes(busca) ||
-        (o.bairro||'').toLowerCase().includes(busca));
 
       // Contagem por turno (para badges nas abas)
       const contPorTurno = {};
@@ -1206,7 +1217,7 @@ const NIT_PLANOP = (() => {
               onclick="NIT_PLANOP.UI.voltarHoje()">${dataLabel}</button>
             <button class="data-nav-btn" onclick="NIT_PLANOP.UI.navegarData(1)" aria-label="Próximo dia">›</button>
           </div>
-          <input class="ops-search" placeholder="Filtrar operações..."
+          <input class="ops-search" placeholder="Buscar operação, posto, endereço ou pessoa..."
             value="${esc(busca)}"
             oninput="NIT_PLANOP.UI.filtrarOps(this.value)">
           ${canWrite() ? `<button class="btn-nova-op-center" onclick="NIT_PLANOP.UI.toggleNovaOp()">
@@ -1214,20 +1225,97 @@ const NIT_PLANOP = (() => {
           </button>` : ''}
         </div>
 
+        <!-- Resultados de pessoas (quando a busca casa com nomes) -->
+        ${busca ? UI._resultadoPessoasHTML(busca, dataVista) : ''}
+
         <!-- Lista de operações -->
         <div class="ops-center-lista" id="ops-center-lista">
           ${ops.length
-            ? ops.map(([id,op]) => UI._opCardHTML(id, op)).join('')
+            ? ops.map(([id,op]) => UI._opCardHTML(id, op, busca ? turnoDaOp(op) : null)).join('')
             : `<div class="ops-vazio">
                 <div class="ops-vazio-icon">○</div>
-                <div class="ops-vazio-txt">Nenhuma operação no turno ${CFG.TURNOS[turnoVisto].label.toLowerCase()}</div>
-                ${canWrite() ? `<button class="btn-ghost-sm" onclick="NIT_PLANOP.UI.toggleNovaOp()">Criar operação</button>` : ''}
+                <div class="ops-vazio-txt">${busca
+                  ? `Nada encontrado para "${esc(busca)}"`
+                  : `Nenhuma operação no turno ${CFG.TURNOS[turnoVisto].label.toLowerCase()}`}</div>
+                ${!busca && canWrite() ? `<button class="btn-ghost-sm" onclick="NIT_PLANOP.UI.toggleNovaOp()">Criar operação</button>` : ''}
               </div>`}
         </div>`;
     },
 
+    // Mostra onde cada pessoa encontrada está — posto, operação e turno.
+    // Inclui quem está sem designação, para o supervisor saber que está livre.
+    _resultadoPessoasHTML(busca, dataVista) {
+      const achados = Object.entries(S.recursos)
+        .filter(([,r]) => (r.nome||'').toLowerCase().includes(busca) && r.status !== 'desligado')
+        .slice(0, 8);
+      if (!achados.length) return '';
+
+      const turnoDaOp = (op) => {
+        if (op?.turno && CFG.TURNOS[op.turno]) return op.turno;
+        const esc2 = S.escalas[op?.escalaId];
+        if (esc2?.turno && CFG.TURNOS[esc2.turno]) return esc2.turno;
+        return 'extraordinario';
+      };
+
+      const linhas = achados.map(([rId, r]) => {
+        // Onde essa pessoa está?
+        const entrada = Object.entries(S.postos)
+          .find(([,p]) => p.orientadores?.[rId]);
+        const cargo = CFG.CARGO_ABBR[r.cargo?.toUpperCase()] || 'ORI';
+
+        let ondeHTML;
+        if (entrada) {
+          const [postoId, posto] = entrada;
+          const op    = S.operacoes[posto.operacaoId];
+          const tKey  = turnoDaOp(op);
+          const tLbl  = CFG.TURNOS[tKey]?.label || '';
+          const faltou = posto.orientadores[rId]?.faltou;
+          ondeHTML = `
+            <span class="bp-turno">${esc(tLbl)}</span>
+            <span class="bp-local">
+              ${esc(titleCase(op?.bairro || op?.nome || '—'))} ·
+              Posto ${posto.numero||'?'} · ${esc(titleCase(posto.local||''))}
+            </span>
+            ${faltou ? '<span class="bp-faltou">FALTOU</span>' : ''}
+            <button class="bp-ir" onclick="NIT_PLANOP.UI.irParaPessoa('${posto.operacaoId}','${tKey}')">Ir →</button>`;
+        } else {
+          const motivo = r.status === 'indisponivel'
+            ? (CFG.MOTIVOS.find(m => m.value === r.motivoIndisponivel)?.label || 'Indisponível')
+            : r.status === 'ausente' ? 'Ausente' : 'Disponível';
+          ondeHTML = `<span class="bp-livre ${r.status}">${esc(motivo)} · sem posto</span>`;
+        }
+
+        return `<div class="busca-pessoa-row">
+          <div class="staff-avatar" style="background:${avatarColorFor(rId, r.nome)}">
+            ${avatarInitials(r.nome)}
+          </div>
+          <div class="bp-info">
+            <div class="bp-nome">${esc(titleCase(r.nome||rId))} <span class="bp-cargo">${esc(cargo)}</span></div>
+            <div class="bp-onde">${ondeHTML}</div>
+          </div>
+        </div>`;
+      }).join('');
+
+      return `<div class="busca-pessoas">
+        <div class="busca-pessoas-label">Pessoas encontradas</div>
+        ${linhas}
+      </div>`;
+    },
+
+    irParaPessoa(opId, turnoKey) {
+      S._buscaOps   = '';
+      S._turnoVisto = turnoKey;
+      S._opsExpandidas = S._opsExpandidas || new Set();
+      S._opsExpandidas.add(opId);
+      UI.renderMainContent();
+      setTimeout(() => {
+        document.getElementById(`opcard-${opId}`)
+          ?.scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 80);
+    },
+
     // Card de operação no centro — expande para mostrar os postos
-    _opCardHTML(opId, op) {
+    _opCardHTML(opId, op, turnoBadge = null) {
       const expandido = S._opsExpandidas?.has(opId);
       const postos = Object.entries(S.postos)
         .filter(([,p]) => p.operacaoId === opId)
@@ -1273,6 +1361,7 @@ const NIT_PLANOP = (() => {
                 ${foraPadrao?'title="Horário difere do padrão do turno"':''}>${esc(horaOp)}${foraPadrao?' ⚠':''}</span>` : ''}
               ${planejada ? '<span class="ops-badge-plan">PLANEJADA</span>' : ''}
               ${rendicao ? '<span class="ops-badge-rend">RENDIÇÃO</span>' : ''}
+              ${turnoBadge ? `<span class="ops-badge-turno">${esc(CFG.TURNOS[turnoBadge]?.label||'')}</span>` : ''}
             </div>
             <div class="op-card-sub">
               ${esc(titleCase(op.tipoMissao||''))}
