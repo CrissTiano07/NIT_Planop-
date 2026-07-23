@@ -230,9 +230,9 @@ const NIT_PLANOP = (() => {
   // tarde laranja-coral (afastado do vermelho de falta)
   // noite violeta (não azul → não briga com --accent interativo)
   const TURNO_COLORS = {
-    manha: '#f5b942',
-    tarde: '#f97316',
-    noite: '#8b7cf6'
+    manha: '#2dd4bf',   // turquesa — céu antes do nascer do sol; 150° do laranja
+    tarde: '#f97316',   // laranja-coral — sol pleno
+    noite: '#8b7cf6'    // violeta — anoitecer, vigília
   };
   const avatarColor = nome => {
     let h = 0;
