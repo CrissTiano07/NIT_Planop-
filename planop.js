@@ -879,6 +879,19 @@ const NIT_PLANOP = (() => {
     abrirAddPosto(opId) {
       document.querySelectorAll('.posto-form-inline').forEach(el => el.remove());
 
+      // Garantir que o card da operação esteja expandido —
+      // senão o form seria inserido num container escondido.
+      S._opsExpandidas = S._opsExpandidas || new Set();
+      if (!S._opsExpandidas.has(opId)) {
+        S._opsExpandidas.add(opId);
+        const card = document.getElementById(`opcard-${opId}`);
+        const body = card?.querySelector('.op-card-body');
+        const chev = card?.querySelector('.op-card-chevron');
+        card?.classList.add('expandido');
+        body?.classList.remove('hidden');
+        if (chev) chev.textContent = '▾';
+      }
+
       const op     = S.operacoes[opId] || {};
       const formId = `posto-form-${opId}`;
 
@@ -926,8 +939,8 @@ const NIT_PLANOP = (() => {
           </div>
         </div>`;
 
-      // Inserir antes do card de "nenhum posto" ou ao final da lista
-      const qrusLista = document.getElementById('qrus-lista');
+      // Inserir na lista de QRUs da operação (id por operação no novo layout)
+      const qrusLista = document.getElementById(`qrus-lista-${opId}`);
       if (qrusLista) {
         qrusLista.insertAdjacentHTML('beforeend', formHTML);
       }
@@ -1096,13 +1109,6 @@ const NIT_PLANOP = (() => {
 
     // ── LISTA DE OPERAÇÕES (sidebar)
 
-    selOp(opId) {
-      S.operacaoSel = opId;
-      // Limpar filtro de QRUs ao trocar de operação
-      const qruSearch = document.querySelector('.qru-search');
-      if (qruSearch) qruSearch.value = '';
-      UI.renderMainContent();
-    },
 
     filtrarOps(val) {
       S._buscaEquipes = val;
@@ -1605,10 +1611,6 @@ const NIT_PLANOP = (() => {
     },
 
     // Fix 3: lightbox para ampliar foto
-    abrirFotoZoom(srcKey) {
-      // srcKey é uma chave — precisamos encontrar a foto correta no DOM
-      // Mais simples: passar a img clicada diretamente via event
-    },
 
     // Drag & drop de imagem para a área de foto
     soltarFoto(event, postoId, tipo) {
@@ -2328,83 +2330,6 @@ const NIT_PLANOP = (() => {
       NIT_PLANOP.Actions.addOrientador(postoId, rId);
     },
 
-    abrirStatusPessoa(event, rId) {
-      event.stopPropagation();
-      document.querySelectorAll('.status-popover').forEach(p => p.remove());
-
-      const r   = S.recursos[rId];
-      if (!r) return;
-
-      // Posto atual (para escalados)
-      const postoByRecurso = {};
-      Object.entries(S.postos).forEach(([pid, p]) => {
-        Object.keys(p.orientadores||{}).forEach(id => { postoByRecurso[id] = { pid, posto: p }; });
-      });
-      const postoAtual = postoByRecurso[rId];
-
-      // Dados cadastrais (contato, bairro, transporte)
-      const tel       = r.contato  ? `<a href="tel:${r.contato}" class="sp-contato" onclick="event.stopPropagation()">${r.contato}</a>` : '<span class="sp-vazio">—</span>';
-      const bairro    = r.bairro   ? esc(titleCase(r.bairro))   : '<span class="sp-vazio">—</span>';
-      const transp    = r.transporte === 'veiculo_proprio'   ? 'Veículo próprio'
-                      : r.transporte === 'transporte_publico' ? 'Transporte público'
-                      : '<span class="sp-vazio">—</span>';
-
-      const popHTML = `
-        <div class="status-popover" id="sp-${rId}" onclick="event.stopPropagation()">
-          <div class="sp-titulo">${esc(titleCase(r.nome||rId))}</div>
-
-          <!-- Dados cadastrais -->
-          <div class="sp-dados">
-            <div class="sp-dado"><span class="sp-dado-label">Contato</span>${tel}</div>
-            <div class="sp-dado"><span class="sp-dado-label">Bairro</span>${bairro}</div>
-            <div class="sp-dado"><span class="sp-dado-label">Transporte</span>${transp}</div>
-          </div>
-
-          <!-- Ações de status -->
-          <div class="sp-divider"></div>
-          <button class="sp-opt sp-edit-btn"
-            onclick="NIT_PLANOP.UI.abrirEditarPessoa('${rId}')">
-            ✏ Editar dados
-          </button>
-          <div class="sp-divider"></div>
-          <div class="sp-opcoes">
-            ${postoAtual ? `
-            <button class="sp-opt warning"
-              onclick="NIT_PLANOP.Actions.liberarDoPosto('${rId}','${postoAtual.pid}')">
-              <span class="sp-dot disponivel"></span> Liberar do posto
-            </button>` : `
-            <button class="sp-opt ${r.status==='disponivel'?'active':''}"
-              onclick="NIT_PLANOP.Actions.setStatusPessoa('${rId}','disponivel')">
-              <span class="sp-dot disponivel"></span> Disponível
-            </button>`}
-            <button class="sp-opt ${r.status==='indisponivel'?'active':''}"
-              onclick="NIT_PLANOP.UI.mostrarMotivos('${rId}')">
-              <span class="sp-dot indisponivel"></span> Indisponível ▸
-            </button>
-          </div>
-          <div class="sp-motivos hidden" id="sp-motivos-${rId}">
-            ${CFG.MOTIVOS.map(m => `
-              <button class="sp-motivo-opt ${r.motivoIndisponivel===m.value?'active':''}"
-                onclick="NIT_PLANOP.Actions.setStatusPessoa('${rId}','indisponivel','${m.value}')">
-                ${esc(m.label)}
-              </button>`).join('')}
-          </div>
-        </div>`;
-
-      const btn = event.currentTarget;
-      const r2  = btn.getBoundingClientRect();
-      const pop = document.createElement('div');
-      pop.innerHTML = popHTML;
-      const el = pop.firstElementChild;
-      document.body.appendChild(el);
-
-      const POPOVER_H = 320;
-      const top = Math.min(r2.top, window.innerHeight - POPOVER_H - 12);
-      el.style.position = 'fixed';
-      el.style.top      = `${Math.max(12, top)}px`;
-      el.style.right    = `${window.innerWidth - r2.left + 8}px`;
-      el.style.zIndex   = '200';
-    },
 
     mostrarMotivos(rId) {
       const motivos = document.getElementById(`sp-motivos-${rId}`);
@@ -2452,8 +2377,7 @@ const NIT_PLANOP = (() => {
           <label class="form-label">Transporte <span class="form-hint">opcional</span></label>
           <div class="combo-wrap">
             <input id="cp-transporte-input" type="text" class="input-sm"
-              placeholder="Selecionar..." autocomplete="off" readonly
-              onclick="NIT_PLANOP.UI._openTransporteCombo()">
+              placeholder="Selecionar..." autocomplete="off" readonly>
             <div id="cp-transporte-list" class="combo-drop"></div>
           </div>
 
@@ -2549,8 +2473,7 @@ const NIT_PLANOP = (() => {
             <div class="combo-wrap">
               <input id="ep2-transp-input" type="text" class="input-sm"
                 value="${esc(transpLabel[r.transporte]||'')}"
-                placeholder="Selecionar..." autocomplete="off" readonly
-                onclick="NIT_PLANOP.UI._openTransporteCombo2()">
+                placeholder="Selecionar..." autocomplete="off" readonly>
               <div id="ep2-transp-list" class="combo-drop"></div>
             </div>
 
@@ -3029,6 +2952,11 @@ const NIT_PLANOP = (() => {
       // Mantido no banco para busca e compatibilidade com relatórios.
       const nome = [bairro, tipo].filter(Boolean).join(' — ') || 'OPERAÇÃO';
 
+      // A operação nasce no turno que o supervisor está visualizando —
+      // não no turno da escala ativa. Se ele está planejando a Tarde,
+      // a operação vai para a Tarde.
+      const turnoDestino = S._turnoVisto || S.escalas[S.escalaAtiva]?.turno || 'manha';
+
       if (!bairro) { toast('Bairro é obrigatório','warning'); return; }
       if (!tipo)   { toast('Selecione o tipo de missão','warning'); return; }
       if (!S.escalaAtiva) { toast('Abra um turno primeiro','warning'); return; }
@@ -3051,7 +2979,8 @@ const NIT_PLANOP = (() => {
       const payload = {
         nome: upper(nome), bairro: upper(bairro),
         horario: hor||'', tipoMissao: tipo,
-        recorrencia
+        recorrencia,
+        turno: turnoDestino
       };
       // Só grava campos de vigência se recorrente
       if (recorrencia !== 'unica') {
