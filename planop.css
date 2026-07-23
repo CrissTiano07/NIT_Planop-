@@ -354,19 +354,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .btn-salvar-padrao:hover { opacity: 1; }
 
 /* Nova operação */
-.sidebar-nova-op {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.btn-nova-op-OLD {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; height: 34px;
-  background: none; color: var(--accent);
-  border: 1px dashed var(--accent); border-radius: var(--radius);
-  font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
-  transition: all var(--dur-fast);
-}
+
 .btn-nova-op:hover { background: var(--accent-dim); }
 .nova-op-form {
   margin-top: var(--space-3);
@@ -472,46 +460,8 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   flex-shrink: 0;
 }
 
-/* Ops lista */
-.ops-lista { flex: 1; overflow-y: auto; }
-.ops-item {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-left: 3px solid transparent;
-  cursor: pointer;
-  transition: background var(--dur-fast), border-color var(--dur-fast);
-  border-bottom: 1px solid var(--border);
-}
-.ops-item:hover { background: var(--surface-hover); }
-.ops-item.active {
-  background: rgba(88,166,255,0.14);
-  border-left-color: var(--accent);
-  border-left-width: 3px;
-}
-.ops-item.active .ops-item-name {
-  color: var(--accent);
-  font-weight: 700;
-}
-.ops-item-icon {
-  width: 26px; height: 26px; border-radius: 6px;
-  background: transparent;
-  display: flex; align-items: center;
-  justify-content: center; flex-shrink: 0;
-  color: var(--text-tertiary);
-}
-.ops-item.active .ops-item-icon { color: var(--accent); }
 .ops-item:hover .ops-item-icon  { color: var(--text-secondary); }
-.ops-item-body { flex: 1; min-width: 0; }
-.ops-item-name {
-  font-size: 13px; font-weight: 600; color: var(--text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.ops-item-sub {
-  /* Contraste 6.97:1 sobre --bg-surface — passa WCAG AA */
-  font-size: 11px; color: var(--text-tertiary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  margin-top: 2px;
-}
+
 .ops-status-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
@@ -570,61 +520,16 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 }
 
 /* ── TOP BAR DA OPERAÇÃO ─────────────────────────────────── */
-.op-topbar {
-  display: flex; align-items: center; gap: var(--space-4);
-  padding-bottom: var(--space-5);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: var(--space-5);
-}
-.op-topbar-icon {
-  width: 44px; height: 44px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--accent-dim);
-  border: 1px solid rgba(88,166,255,0.2);
-  border-radius: 10px;
-  color: var(--accent);
-}
-.op-topbar-info { flex: 1; min-width: 0; }
-.op-topbar-name {
-  font-size: 20px; font-weight: 700; color: var(--text-primary);
-  display: flex; align-items: center; gap: var(--space-3);
-  flex-wrap: wrap;
-}
-.op-topbar-sub {
-  font-size: 12px; color: var(--text-tertiary); margin-top: 3px;
-}
-.op-topbar-right {
-  display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0;
-}
-.topbar-date {
-  font-size: 12px; color: var(--text-muted);
-  background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 4px 10px;
-}
+
 .topbar-clock {
   font-family: var(--font-mono); font-size: 14px; font-weight: 600;
   color: var(--text-secondary); min-width: 42px; text-align: right;
 }
 
 /* Modo Executar / Planejar — dois botões independentes */
-.modo-btns {
-  display: flex; gap: var(--space-2);
-}
-.modo-btn {
-  display: flex; align-items: center; gap: 5px;
-  height: 32px; padding: 0 var(--space-3);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
-  color: var(--text-muted); cursor: pointer;
-  transition: all var(--dur-fast);
-}
+
 .modo-btn:hover { border-color: var(--accent); color: var(--accent); }
-.modo-btn-active {
-  background: var(--accent); border-color: var(--accent);
-  color: #0d1826;
-}
+
 .modo-btn-active:hover { opacity: 0.9; border-color: var(--accent); color: #0d1826; }
 
 /* Badge ATIVO */
@@ -645,21 +550,10 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--text-muted);
 }
-.qru-search {
-  flex: 1; height: 28px; padding: 0 var(--space-3);
-  background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius); color: var(--text-secondary);
-  font-size: 11px;
-}
+
 .qru-search:focus { outline: none; border-color: var(--accent); }
 .qru-search::placeholder { color: var(--text-muted); }
-.btn-expandir {
-  height: 28px; padding: 0 10px;
-  background: none; border: 1px solid var(--border);
-  border-radius: var(--radius); color: var(--text-muted);
-  font-size: 10px; font-weight: 600;
-  transition: all var(--dur-fast);
-}
+
 .btn-expandir:hover { border-color: var(--border-strong); color: var(--text-secondary); }
 .btn-add-posto {
   height: 28px; padding: 0 10px;
@@ -1098,9 +992,8 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .sp-motivo-opt:hover { background: var(--surface-hover); color: var(--text-primary); }
 .sp-motivo-opt.active { color: var(--warning); font-weight: 600; }
 
-
 /* Menus de contexto — operação (sidebar) e posto (card) */
-.ops-item-menu-wrap { position: relative; flex-shrink: 0; }
+
 .btn-ops-menu {
   background: none; border: none; color: var(--text-muted);
   font-size: 16px; padding: 4px 6px; cursor: pointer;
@@ -1390,9 +1283,7 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .btn-danger-sm:hover { opacity: .85; }
 
 /* Planejar desabilitado */
-.modo-btn-disabled {
-  opacity: 0.4; cursor: not-allowed;
-}
+
 .modo-btn-disabled:hover {
   border-color: var(--border-strong) !important;
   color: var(--text-muted) !important;
@@ -1421,7 +1312,6 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   margin-top: var(--space-2);
 }
 
-
 /* ── LEGIBILIDADE PARA OPERADOR INICIANTE ─────────────────────────
    Foco visível: iniciantes navegam por Tab e precisam ver onde estão */
 button:focus-visible, input:focus-visible, [onclick]:focus-visible {
@@ -1435,9 +1325,7 @@ input:focus {
 
 /* Números sempre tabulares em contexto de dados */
 /* Linha de leitura mais confortável em textos de apoio */
-.qru-sub, .staff-sub-line, .ops-item-sub, .op-topbar-sub {
-  line-height: 1.45;
-}
+.qru-sub, .staff-sub-line, .ops-item-sub, 
 
 /* ── SETTINGS MENU (gear icon) ───────────────────────── */
 .settings-wrap { position: relative; }
@@ -1885,10 +1773,7 @@ input:focus {
    O slot tem largura fixa; o conteúdo dentro (dot, ícone) mantém sua forma. */
 .icon-slot,
 .sidebar-pulse,
-.ops-item-icon {
-  width: 20px; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-}
+
 .icon-slot .shift-dot { margin: 0; }
 
 /* Status de sessão no rodapé (substitui o badge de cargo) */
@@ -1930,7 +1815,6 @@ input:focus {
   background: var(--danger-dim);
 }
 
-
 /* Item 4: Nova Operação como CTA sólido (não drop-zone tracejado) */
 .btn-nova-op {
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -1957,33 +1841,8 @@ input:focus {
 }
 
 /* ═══ NAVEGAÇÃO POR TURNO ═══════════════════════════════ */
-.turno-grupo {
-  border-bottom: 1px solid var(--border);
-}
-.turno-cabecalho {
-  display: flex; align-items: baseline; gap: var(--space-2);
-  padding: var(--space-3) var(--space-4) 6px;
-}
-.turno-nome {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
-  color: var(--text-secondary); text-transform: uppercase;
-}
-.turno-horario {
-  font-size: 10px; font-family: var(--font-mono);
-  color: var(--text-muted); letter-spacing: 0.02em;
-}
-.turno-badge-atual {
-  margin-left: auto; font-size: 9px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--success); background: var(--success-dim);
-  padding: 1px 7px; border-radius: 10px;
-}
-.turno-grupo.turno-atual .turno-nome { color: var(--accent); }
-.turno-ops { display: flex; flex-direction: column; }
-.turno-vazio {
-  padding: 6px var(--space-4) var(--space-3) 44px;
-  font-size: 11px; color: var(--text-muted); font-style: italic;
-}
+
+.turno-grupo.turno-atual 
 
 /* Horário fora do padrão do turno */
 .ops-hora {
@@ -2009,7 +1868,7 @@ input:focus {
 .ops-item.ops-planejada {
   opacity: 0.68;
 }
-.ops-item.ops-planejada .ops-item-icon { opacity: 0.6; }
+.ops-item.ops-planejada 
 .ops-item.ops-rendicao {
   border-left: 2px solid var(--accent);
 }
@@ -2266,4 +2125,68 @@ input:focus {
 .nova-op-dialog .nova-op-form {
   padding: var(--space-4);
   display: flex; flex-direction: column; gap: var(--space-2);
+}
+
+/* ═══ PLANEJAR PARA OUTRO TURNO ═════════════════════════ */
+.planejar-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 600; animation: fadeIn var(--dur-fast);
+  padding: var(--space-4);
+}
+.planejar-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  width: 360px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+.planejar-header {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.planejar-titulo {
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
+}
+.planejar-sub {
+  font-size: 11px; color: var(--text-tertiary); margin-top: 3px;
+}
+.planejar-body { padding: var(--space-4); }
+.planejar-turnos {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.planejar-turno-opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 8px 10px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); cursor: pointer;
+  transition: all var(--dur-fast); text-align: left;
+}
+.planejar-turno-opt:hover { border-color: var(--accent); }
+.planejar-turno-opt.sel {
+  background: var(--accent-dim); border-color: var(--accent);
+}
+.pt-nome {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+  color: var(--text-secondary); text-transform: uppercase;
+}
+.planejar-turno-opt.sel .pt-nome { color: var(--accent); }
+.pt-hora {
+  font-size: 9px; font-family: var(--font-mono); color: var(--text-muted);
+}
+.planejar-check {
+  display: flex; align-items: flex-start; gap: 7px;
+  padding: 6px 0; font-size: 12px; color: var(--text-secondary);
+  cursor: pointer;
+}
+.planejar-check input { accent-color: var(--accent); margin-top: 2px; }
+.planejar-check input:disabled + span { opacity: 0.45; }
+.pl-hint {
+  display: block; font-size: 10px; color: var(--text-muted); margin-top: 1px;
+}
+.planejar-footer {
+  display: flex; justify-content: flex-end; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
 }
