@@ -209,9 +209,6 @@ const NIT_PLANOP = (() => {
   };
 
   const opIcon = tipo => CFG.OP_ICONS[tipo] || CFG.OP_ICONS.default;
-  // Versão maior para o top bar (28x28)
-  const opIconLg = tipo => (CFG.OP_ICONS[tipo] || CFG.OP_ICONS.default)
-    .replace(/width="15"/g, 'width="28"').replace(/height="15"/g, 'height="28"');
 
   // Cor do avatar a partir do nome (determinística)
   const AVATAR_COLORS = [
@@ -497,8 +494,7 @@ const NIT_PLANOP = (() => {
 
         UI.renderShiftBar();
         UI.renderSupervisao();
-        UI.renderOpsList();
-        UI.renderMainContent();
+          UI.renderMainContent();
       });
       S._unsubs.push(() => ref.off('value', fn));
     },
@@ -511,8 +507,7 @@ const NIT_PLANOP = (() => {
         // Reconstrói do snap — deleções no Firebase refletem no estado local.
         // (Object.assign aditivo mantinha itens deletados para sempre.)
         S.operacoes = snap.val() || {};
-        UI.renderOpsList();
-        if (!S._suppressRender) UI.renderMainContent();
+          if (!S._suppressRender) UI.renderMainContent();
       });
       S._escalaUnsubs.push(() => ref.off('value', fn));
     },
@@ -544,8 +539,7 @@ const NIT_PLANOP = (() => {
               S.postos[id].fotosRegistro = fotosCache[id].fotosRegistro;
           }
         });
-        UI.renderOpsList();
-        if (!S._suppressRender) {
+          if (!S._suppressRender) {
           UI.renderMainContent();
           UI.renderRightPanel();
         }
@@ -671,7 +665,6 @@ const NIT_PLANOP = (() => {
       // (ou corrigir) quando o Firebase responder.
       S.operacoes[ref.key] = payload;
       S.operacaoSel = ref.key;
-      UI.renderOpsList();
       UI.renderMainContent();
       return ref.key;
     },
@@ -691,7 +684,7 @@ const NIT_PLANOP = (() => {
       S._suppressRender = true;
       setTimeout(() => { S._suppressRender = false; }, 600);
       UI._patchQruCard(postoId);
-      UI.renderOpsList();
+      UI._patchOpCard(S.postos[postoId]?.operacaoId);
       UI.renderRightPanel();
     },
 
@@ -711,7 +704,7 @@ const NIT_PLANOP = (() => {
       S._suppressRender = true;
       setTimeout(() => { S._suppressRender = false; }, 600);
       UI._patchQruCard(postoId);
-      UI.renderOpsList();
+      UI._patchOpCard(S.postos[postoId]?.operacaoId);
       UI.renderRightPanel();
     },
 
@@ -1102,119 +1095,12 @@ const NIT_PLANOP = (() => {
     },
 
     // ── LISTA DE OPERAÇÕES (sidebar)
-    renderOpsList() {
-      // Lista de operações migrou para o painel central (renderMainContent).
-      // Mantida como no-op para não quebrar chamadas existentes.
-      const lista = $('ops-lista');
-      if (!lista) return;
-      const busca = S._buscaEquipes.toLowerCase().trim();
-      const dataVista = S._dataVista || getDataHoje();
-
-      // Todas as operações visíveis (filtro de busca + projeção de recorrência)
-      let todasOps = Object.entries(S.operacoes)
-        .filter(([,op]) => operacaoAconteceEm(op, dataVista))
-        .sort(([,a],[,b]) => (a.ordem||0)-(b.ordem||0));
-      if (busca) todasOps = todasOps.filter(([,o]) =>
-        (o.nome||'').toLowerCase().includes(busca) ||
-        (o.bairro||'').toLowerCase().includes(busca));
-
-      // Turno de uma operação: campo próprio, ou derivado da escala, ou 'extraordinario'
-      const turnoDaOp = (op) => {
-        if (op.turno && CFG.TURNOS[op.turno]) return op.turno;
-        const esc = S.escalas[op.escalaId];
-        if (esc?.turno && CFG.TURNOS[esc.turno]) return esc.turno;
-        return 'extraordinario';
-      };
-
-      // Agrupar por turno
-      const grupos = { manha:[], tarde:[], noite:[], extraordinario:[] };
-      todasOps.forEach(([id, op]) => {
-        grupos[turnoDaOp(op)].push([id, op]);
-      });
-
-      // Renderizar cada turno como um bloco
-      const html = CFG.TURNOS_ORDEM.map(turnoKey => {
-        const t   = CFG.TURNOS[turnoKey];
-        const ops = grupos[turnoKey];
-        const horarioTurno = t.inicio ? `${t.inicio}–${t.fim}` : '';
-        const isAtual = S.escalas[S.escalaAtiva]?.turno === turnoKey;
-
-        const opsHTML = ops.length ? ops.map(([id, op]) => {
-          const ativo   = S.operacaoSel === id ? 'active' : '';
-          const dot     = opDot(id);
-          const icon    = opIcon(op.tipoMissao);
-          const nPostos = Object.values(S.postos).filter(p => p.operacaoId === id).length;
-          const planejada = op.status === 'planejada';
-          const rendicao  = op.rendicao === true;
-
-          // Horário fora do padrão do turno → destacar como alerta
-          const horaOp = op.horario || '';
-          const foraDoPadrao = horaOp && t.inicio && horaOp !== t.inicio;
-          const horaHTML = horaOp
-            ? `<span class="ops-hora${foraDoPadrao?' fora-padrao':''}" ${foraDoPadrao?'title="Horário difere do padrão do turno"':''}>${esc(horaOp)}${foraDoPadrao?' ⚠':''}</span>`
-            : '';
-
-          const estadoBadge = planejada ? '<span class="ops-badge-plan">PLANEJADA</span>'
-            : rendicao ? '<span class="ops-badge-rend">RENDIÇÃO</span>' : '';
-
-          // Rótulo de recorrência/vigência
-          const recLabel = (() => {
-            const r = op.recorrencia;
-            if (!r || r === 'unica') return '';
-            const fmtData = d => d ? d.split('-').reverse().slice(0,2).join('/') : '';
-            if (r === 'diaria')  return op.dataFim ? `Diária · até ${fmtData(op.dataFim)}` : 'Diária · sem prazo';
-            if (r === 'anual')   return op.dataInicio ? `Anual · ${fmtData(op.dataInicio)}` : 'Anual';
-            if (r === 'semanal') {
-              const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-              const nomes = (op.diasSemana||[]).map(d => dias[d]).join(', ');
-              return op.dataFim ? `${nomes} · até ${fmtData(op.dataFim)}` : `${nomes} · sem prazo`;
-            }
-            return '';
-          })();
-          const recHTML = recLabel ? `<span class="ops-recorrencia">${esc(recLabel)}</span>` : '';
-
-          return `<div class="ops-item ${ativo} ${planejada?'ops-planejada':''} ${rendicao?'ops-rendicao':''}"
-            onclick="NIT_PLANOP.UI.selOp('${id}')"
-            ${ativo ? 'aria-current="true"' : ''} role="button" tabindex="0">
-            <div class="ops-item-icon">${icon}</div>
-            <div class="ops-item-body">
-              <div class="ops-item-name">${esc(titleCase(op.bairro||op.nome||'—'))} ${horaHTML}</div>
-              <div class="ops-item-sub">${esc([titleCase(op.tipoMissao||''), nPostos+' posto'+(nPostos!==1?'s':'')].filter(Boolean).join(' · '))} ${estadoBadge}</div>
-              ${recHTML}
-            </div>
-            ${!planejada ? `<span class="ops-status-dot ${dot}"></span>` : ''}
-            ${canWrite() ? `
-            <div class="ops-item-menu-wrap" onclick="event.stopPropagation()">
-              <button class="btn-ops-menu" onclick="NIT_PLANOP.UI.toggleOpsMenu('${id}',event)"
-                aria-label="Opções da operação">···</button>
-              <div class="ops-ctx-menu hidden" id="ops-menu-${id}">
-                <button onclick="NIT_PLANOP.UI.abrirEditOp('${id}')">✏ Editar</button>
-                <button onclick="NIT_PLANOP.UI.abrirPlanejar('${id}')">📅 Planejar p/ outro turno</button>
-                <button class="danger" onclick="NIT_PLANOP.Actions.deletarOp('${id}')">🗑 Deletar</button>
-              </div>
-            </div>` : ''}
-          </div>`;
-        }).join('') : `<div class="turno-vazio">nenhuma operação</div>`;
-
-        return `<div class="turno-grupo ${isAtual?'turno-atual':''}">
-          <div class="turno-cabecalho">
-            <span class="turno-nome">${t.label}</span>
-            ${horarioTurno ? `<span class="turno-horario">${horarioTurno}</span>` : ''}
-            ${isAtual ? '<span class="turno-badge-atual">agora</span>' : ''}
-          </div>
-          <div class="turno-ops">${opsHTML}</div>
-        </div>`;
-      }).join('');
-
-      lista.innerHTML = html;
-    },
 
     selOp(opId) {
       S.operacaoSel = opId;
       // Limpar filtro de QRUs ao trocar de operação
       const qruSearch = document.querySelector('.qru-search');
       if (qruSearch) qruSearch.value = '';
-      UI.renderOpsList();
       UI.renderMainContent();
     },
 
@@ -1222,7 +1108,6 @@ const NIT_PLANOP = (() => {
       S._buscaEquipes = val;
       const clear = $('sidebar-busca-clear');
       if (clear) clear.classList.toggle('hidden', !val);
-      UI.renderOpsList();
     },
 
     limparBuscaOps() {
@@ -1420,6 +1305,103 @@ const NIT_PLANOP = (() => {
           </div>
         </div>
       </div>`;
+    },
+
+    // Atualiza só as métricas do header do card de operação.
+    // Preserva o estado expandido e os postos renderizados dentro.
+    _patchOpCard(opId) {
+      const card = document.getElementById(`opcard-${opId}`);
+      if (!card) return;
+      const postos = Object.entries(S.postos).filter(([,p]) => p.operacaoId === opId);
+      const total  = postos.length;
+      const vazios = postos.filter(([,p]) => !Object.keys(p.orientadores||{}).length).length;
+      const pess   = postos.reduce((s,[,p]) => s + Object.keys(p.orientadores||{}).length, 0);
+      const falt   = postos.reduce((s,[,p]) =>
+        s + Object.values(p.orientadores||{}).filter(o => o.faltou).length, 0);
+
+      const metrics = card.querySelector('.op-card-metrics');
+      if (metrics) {
+        metrics.innerHTML = `
+          <span class="opm">${total} posto${total!==1?'s':''}</span>
+          ${pess > 0 ? `<span class="opm opm-ok">${pess - falt} em campo</span>` : ''}
+          ${falt > 0 ? `<span class="opm opm-falta">${falt} ⚠</span>` : ''}
+          ${vazios > 0 ? `<span class="opm opm-vazio">${vazios} vazio${vazios!==1?'s':''}</span>` : ''}`;
+      }
+      const dot = card.querySelector('.op-card-header > .ops-status-dot');
+      if (dot) dot.className = `ops-status-dot ${opDot(opId)}`;
+    },
+
+    abrirPlanejar(opId) {
+      UI._fecharTodosMenus();
+      const op = S.operacoes[opId];
+      if (!op) return;
+
+      document.getElementById('planejar-overlay')?.remove();
+
+      const turnoAtual = op.turno || S.escalas[op.escalaId]?.turno || 'extraordinario';
+      const postos = Object.entries(S.postos).filter(([,p]) => p.operacaoId === opId);
+      const nPostos = postos.length;
+
+      const opcoes = CFG.TURNOS_ORDEM
+        .filter(t => t !== turnoAtual)
+        .map(t => {
+          const cfg = CFG.TURNOS[t];
+          return `<button class="planejar-turno-opt" data-turno="${t}"
+            onclick="NIT_PLANOP.UI._selPlanejarTurno('${t}')">
+            <span class="pt-nome">${cfg.label}</span>
+            ${cfg.inicio ? `<span class="pt-hora">${cfg.inicio}–${cfg.fim}</span>` : ''}
+          </button>`;
+        }).join('');
+
+      const html = `
+        <div id="planejar-overlay" class="planejar-overlay"
+          onclick="if(event.target===this)this.remove()">
+          <div class="planejar-dialog" onclick="event.stopPropagation()">
+            <div class="planejar-header">
+              <div class="planejar-titulo">Planejar para outro turno</div>
+              <div class="planejar-sub">
+                ${esc(titleCase(op.bairro||op.nome||''))} · ${esc(titleCase(op.tipoMissao||''))}
+              </div>
+            </div>
+
+            <div class="planejar-body">
+              <label class="form-label">Turno de destino</label>
+              <div class="planejar-turnos" id="planejar-turnos">${opcoes}</div>
+              <input type="hidden" id="planejar-turno-sel" value="">
+
+              <label class="form-label" style="margin-top:12px">O que copiar</label>
+              <label class="planejar-check">
+                <input type="checkbox" id="pl-postos" checked ${!nPostos?'disabled':''}>
+                <span>Postos e endereços <span class="pl-hint">${nPostos} posto${nPostos!==1?'s':''}</span></span>
+              </label>
+              <label class="planejar-check">
+                <input type="checkbox" id="pl-pessoas">
+                <span>Orientadores designados
+                  <span class="pl-hint">geralmente mudam entre turnos</span></span>
+              </label>
+              <label class="planejar-check">
+                <input type="checkbox" id="pl-obs" checked>
+                <span>Observações e fotos de referência</span>
+              </label>
+            </div>
+
+            <div class="planejar-footer">
+              <button class="btn-ghost-sm"
+                onclick="document.getElementById('planejar-overlay')?.remove()">Cancelar</button>
+              <button class="btn-accent-sm" id="btn-planejar-confirmar"
+                onclick="NIT_PLANOP.Actions.confirmarPlanejar('${opId}')">Criar no turno</button>
+            </div>
+          </div>
+        </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', html);
+    },
+
+    _selPlanejarTurno(turno) {
+      const hidden = $('planejar-turno-sel');
+      if (hidden) hidden.value = turno;
+      document.querySelectorAll('.planejar-turno-opt').forEach(b =>
+        b.classList.toggle('sel', b.dataset.turno === turno));
     },
 
     toggleOpExpand(opId) {
@@ -1719,27 +1701,7 @@ const NIT_PLANOP = (() => {
       if (btn) btn.textContent = aberto ? '▾ Detalhes do posto' : '▸ Detalhes do posto';
     },
 
-    toggleExpandirTodos() {
-      const cards = document.querySelectorAll('.qru-card');
-      const btn   = document.getElementById('btn-expandir-todos');
-      const algumColapsado = [...cards].some(c => !c.classList.contains('expanded'));
-      if (algumColapsado) {
-        cards.forEach(c => c.classList.add('expanded'));
-        if (btn) btn.textContent = 'Colapsar todos';
-      } else {
-        cards.forEach(c => c.classList.remove('expanded'));
-        if (btn) btn.textContent = 'Expandir todos';
-      }
-    },
 
-    filtrarQrus(val) {
-      const busca = val.toLowerCase().trim();
-      document.querySelectorAll('.qru-card').forEach(card => {
-        const addr = card.querySelector('.qru-addr')?.textContent?.toLowerCase()||'';
-        const sub  = card.querySelector('.qru-sub')?.textContent?.toLowerCase()||'';
-        card.style.display = (!busca || addr.includes(busca) || sub.includes(busca)) ? '' : 'none';
-      });
-    },
 
     // ── DROPDOWN DE ORIENTADOR
     // Bairro do form de nova operação — inicializado uma vez ao abrir o form
@@ -2067,14 +2029,6 @@ const NIT_PLANOP = (() => {
     _fecharTodosMenus() {
       document.querySelectorAll('.ops-ctx-menu')
         .forEach(m => m.classList.add('hidden'));
-    },
-
-    abrirPlanejar(opId) {
-      UI._fecharTodosMenus();
-      const op = S.operacoes[opId];
-      if (!op) return;
-      // Etapa 4: modal de seleção de turno de destino + herança de estrutura
-      toast('Planejar para outro turno — em construção', 'info');
     },
 
     toggleOpsMenu(opId, event) {
@@ -2644,32 +2598,12 @@ const NIT_PLANOP = (() => {
       const [y,m,d] = atual.split('-').map(Number);
       const nova = new Date(y, m-1, d + delta);
       S._dataVista = nova.toISOString().slice(0,10);
-      UI._atualizarLabelData();
-      UI.renderOpsList();
     },
 
     voltarHoje() {
       S._dataVista = getDataHoje();
-      UI._atualizarLabelData();
-      UI.renderOpsList();
     },
 
-    _atualizarLabelData() {
-      const lbl = $('data-nav-label');
-      if (!lbl) return;
-      const vista = S._dataVista || getDataHoje();
-      const hoje  = getDataHoje();
-      if (vista === hoje) {
-        lbl.textContent = 'Hoje';
-        lbl.classList.remove('data-outra');
-      } else {
-        const [y,m,d] = vista.split('-').map(Number);
-        const dt = new Date(y, m-1, d);
-        const diasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-        lbl.textContent = `${diasSemana[dt.getDay()]} ${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}`;
-        lbl.classList.add('data-outra');
-      }
-    },
 
     selRecorrencia(rec) {
       const hidden = $('nop-recorrencia');
@@ -3132,6 +3066,97 @@ const NIT_PLANOP = (() => {
       toast('Operação criada!', 'success');
     },
 
+    async confirmarPlanejar(opId) {
+      const turnoDest = $('planejar-turno-sel')?.value;
+      if (!turnoDest) { toast('Escolha o turno de destino', 'warning'); return; }
+
+      const op = S.operacoes[opId];
+      if (!op) return;
+
+      const copiarPostos  = $('pl-postos')?.checked;
+      const copiarPessoas = $('pl-pessoas')?.checked;
+      const copiarObs     = $('pl-obs')?.checked;
+
+      const btn = $('btn-planejar-confirmar');
+      if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
+
+      try {
+        // 1. Criar a operação no turno de destino, com status 'planejada'
+        const novaOpPayload = {
+          nome:        op.nome,
+          bairro:      op.bairro,
+          tipoMissao:  op.tipoMissao,
+          horario:     CFG.TURNOS[turnoDest]?.inicio || op.horario || '',
+          turno:       turnoDest,
+          escalaId:    S.escalaAtiva,
+          status:      'planejada',
+          origemOpId:  opId,          // rastreabilidade
+          criadoEm:    Date.now()
+        };
+        // Herdar recorrência se houver
+        if (op.recorrencia && op.recorrencia !== 'unica') {
+          novaOpPayload.recorrencia = op.recorrencia;
+          if (op.dataInicio) novaOpPayload.dataInicio = op.dataInicio;
+          if (op.dataFim !== undefined) novaOpPayload.dataFim = op.dataFim;
+          if (op.diasSemana) novaOpPayload.diasSemana = op.diasSemana;
+        }
+
+        const refOp = await S.db.ref('efetivo/operacoes').push(novaOpPayload);
+        const novaOpId = refOp.key;
+        S.operacoes[novaOpId] = novaOpPayload;
+
+        // 2. Copiar postos, se pedido
+        let nCopiados = 0;
+        if (copiarPostos) {
+          const postos = Object.entries(S.postos)
+            .filter(([,p]) => p.operacaoId === opId)
+            .sort(([,a],[,b]) => (a.numero||0)-(b.numero||0));
+
+          for (const [, posto] of postos) {
+            const novoPosto = {
+              escalaId:   S.escalaAtiva,
+              operacaoId: novaOpId,
+              numero:     posto.numero,
+              local:      posto.local,
+              bairro:     posto.bairro,
+              tipoAcao:   posto.tipoAcao,
+              horario:    CFG.TURNOS[turnoDest]?.inicio || posto.horario || '',
+              qruPessoas: posto.qruPessoas || 1,
+              criadoEm:   Date.now()
+            };
+            if (copiarObs) {
+              if (posto.obs) novoPosto.obs = posto.obs;
+              if (posto.fotoReferencia) novoPosto.fotoReferencia = posto.fotoReferencia;
+            }
+            // Orientadores: só se explicitamente pedido
+            if (copiarPessoas && posto.orientadores) {
+              novoPosto.orientadores = {};
+              Object.entries(posto.orientadores).forEach(([rId, o]) => {
+                novoPosto.orientadores[rId] = { nome:o.nome, cargo:o.cargo, ts:Date.now() };
+              });
+            }
+            const refP = await S.db.ref('efetivo/postos').push(novoPosto);
+            S.postos[refP.key] = novoPosto;
+            nCopiados++;
+          }
+        }
+
+        document.getElementById('planejar-overlay')?.remove();
+        S._turnoVisto = turnoDest;   // navega para o turno de destino
+        UI.renderMainContent();
+
+        const lbl = CFG.TURNOS[turnoDest]?.label || turnoDest;
+        toast(nCopiados
+          ? `Planejada em ${lbl} · ${nCopiados} posto${nCopiados!==1?'s':''} copiado${nCopiados!==1?'s':''}`
+          : `Operação planejada em ${lbl}`, 'success');
+
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Criar no turno'; }
+        toast(erroHumano(e), 'danger', 5000);
+        console.error('[confirmarPlanejar]', e);
+      }
+    },
+
     async confirmarEditarPessoa(rId) {
       const nome   = $('ep2-nome')?.value.trim();
       if (!nome) { toast('Nome é obrigatório','warning'); return; }
@@ -3398,7 +3423,6 @@ const NIT_PLANOP = (() => {
       delete S.operacoes[opId];
       const eraSelected = S.operacaoSel === opId;
       if (eraSelected) S.operacaoSel = null;
-      UI.renderOpsList();
       UI.renderMainContent();
 
       let desfeito = false;
@@ -3409,8 +3433,7 @@ const NIT_PLANOP = (() => {
         S.operacoes[opId] = opRestore;
         Object.entries(postosRestore).forEach(([pid, p]) => { S.postos[pid] = p; });
         if (eraSelected) S.operacaoSel = opId;
-        UI.renderOpsList();
-        UI.renderMainContent();
+          UI.renderMainContent();
         toast('Remoção desfeita', 'success');
       }, 5000);
 
@@ -3458,15 +3481,13 @@ const NIT_PLANOP = (() => {
       const snapshot = { [postoId]: { ...posto } };
       const restore  = posto;
       delete S.postos[postoId]; // soft delete
-      UI.renderOpsList();
       UI.renderMainContent();
 
       let desfeito = false;
       toastUndo(`Posto Nº ${posto.numero} removido`, () => {
         desfeito = true;
         S.postos[postoId] = restore;
-        UI.renderOpsList();
-        UI.renderMainContent();
+          UI.renderMainContent();
         toast('Remoção desfeita', 'success');
       }, 5000);
 
@@ -3594,7 +3615,7 @@ const NIT_PLANOP = (() => {
       document.querySelectorAll('.orientador-chip.chip-sel').forEach(c => c.classList.remove('chip-sel')); return;
     }
     // Overlays modais
-    ['encerrar-confirm-overlay','editar-turno-form','editar-pessoa-form','cadastrar-pessoa-form'].forEach(id => {
+    ['encerrar-confirm-overlay','editar-turno-form','editar-pessoa-form','cadastrar-pessoa-form','planejar-overlay'].forEach(id => {
       document.getElementById(id)?.remove();
     });
     $('nova-op-overlay')?.classList.add('hidden');
