@@ -151,12 +151,70 @@
       </div>
     </div>
 
-    <!-- Nova operação -->
-    <div class="sidebar-nova-op">
-      <button class="btn-nova-op" id="btn-nova-op"
-        onclick="NIT_PLANOP.UI.toggleNovaOp()">
-        + Nova Operação
+  </aside>
+
+  <!-- ── COLUNA 2: PAINEL PRINCIPAL ───────────────────── -->
+  <main class="main-panel" id="main-panel">
+
+    <!-- Indicador de conexão + save state -->
+    <div id="conexao-bar" class="conexao-bar conexao-offline">
+      <span id="conexao-dot-main" class="conexao-dot"></span>
+      <span id="conexao-label-main">Conectando...</span>
+      <span class="save-indicator" id="save-indicator">
+        <span class="save-dot saved" id="save-indicator-dot"></span>
+        <span class="save-lbl" id="save-indicator-lbl">Salvo</span>
+      </span>
+    </div>
+
+    <!-- Conteúdo dinâmico (renderizado por JS) -->
+    <div id="main-content"></div>
+  </main>
+
+  <!-- ── COLUNA 3: PAINEL DIREITO ──────────────────────── -->
+  <aside class="right-panel" id="right-panel">
+    <div class="right-header">
+      <span class="section-label">EFETIVO</span>
+      <button class="btn-cadastrar-pessoa" onclick="NIT_PLANOP.UI.abrirCadastrarPessoa()"
+        title="Cadastrar novo orientador">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
       </button>
+    </div>
+
+    <!-- Totais do efetivo -->
+    <div class="efetivo-totais" id="efetivo-totais"></div>
+
+    <div class="turno-legenda">
+      <span class="tl-item"><span class="tl-dot" style="background:#f5b942"></span>Manhã</span>
+      <span class="tl-item"><span class="tl-dot" style="background:#f97316"></span>Tarde</span>
+      <span class="tl-item"><span class="tl-dot" style="background:#8b7cf6"></span>Noite</span>
+    </div>
+
+    <p class="right-hint">Arraste para o QRU ou clique em + Adicionar</p>
+    <div class="right-search">
+      <input id="right-busca" type="text" placeholder="Filtrar..."
+        oninput="NIT_PLANOP.UI.filtrarStaff(this.value)">
+    </div>
+    <div id="staff-lista" class="staff-lista"></div>
+  </aside>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FIREBASE
+═══════════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+<script src="planop.js"></script>
+
+
+<!-- Overlay: Nova Operação (movido da sidebar) -->
+<div id="nova-op-overlay" class="nova-op-overlay hidden"
+  onclick="if(event.target===this)NIT_PLANOP.UI.fecharNovaOp()">
+  <div class="nova-op-dialog" onclick="event.stopPropagation()">
+    <div class="nova-op-dialog-header">Nova Operação</div>
       <div id="nova-op-form" class="nova-op-form hidden">
         <label class="form-label">Bairro *</label>
         <div class="combo-wrap">
@@ -251,94 +309,8 @@
         oninput="NIT_PLANOP.UI.filtrarOps(this.value)">
       <button class="sidebar-busca-clear hidden" id="sidebar-busca-clear"
         onclick="NIT_PLANOP.UI.limparBuscaOps()" aria-label="Limpar busca">×</button>
-    </div>
-
-    <div class="section-label-row">
-      <span>OPERAÇÕES</span>
-      <div class="data-nav" id="data-nav">
-        <button class="data-nav-btn" onclick="NIT_PLANOP.UI.navegarData(-1)" title="Dia anterior" aria-label="Dia anterior">‹</button>
-        <button class="data-nav-label" id="data-nav-label" onclick="NIT_PLANOP.UI.voltarHoje()" title="Voltar para hoje">Hoje</button>
-        <button class="data-nav-btn" onclick="NIT_PLANOP.UI.navegarData(1)" title="Próximo dia" aria-label="Próximo dia">›</button>
-      </div>
-    </div>
-
-    <!-- Lista de operações -->
-    <div id="ops-lista" class="ops-lista"></div>
-
-    <!-- Footer do usuário -->
-    <div class="sidebar-user">
-      <div class="avatar" id="user-avatar" aria-hidden="true">CM</div>
-      <div class="user-info">
-        <span id="user-name" class="user-name">Cristiano Miranda</span>
-        <span id="user-role" class="user-session-label">
-          <span class="user-session-dot"></span>Conectado
-        </span>
-      </div>
-      <button class="btn-logout-labeled" onclick="NIT_PLANOP.Auth.logout()"
-        title="Sair" aria-label="Sair da conta">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
-        </svg>
-        <span>Sair</span>
-      </button>
-    </div>
-  </aside>
-
-  <!-- ── COLUNA 2: PAINEL PRINCIPAL ───────────────────── -->
-  <main class="main-panel" id="main-panel">
-
-    <!-- Indicador de conexão + save state -->
-    <div id="conexao-bar" class="conexao-bar conexao-offline">
-      <span id="conexao-dot-main" class="conexao-dot"></span>
-      <span id="conexao-label-main">Conectando...</span>
-      <span class="save-indicator" id="save-indicator">
-        <span class="save-dot saved" id="save-indicator-dot"></span>
-        <span class="save-lbl" id="save-indicator-lbl">Salvo</span>
-      </span>
-    </div>
-
-    <!-- Conteúdo dinâmico (renderizado por JS) -->
-    <div id="main-content"></div>
-  </main>
-
-  <!-- ── COLUNA 3: PAINEL DIREITO ──────────────────────── -->
-  <aside class="right-panel" id="right-panel">
-    <div class="right-header">
-      <span class="section-label">EFETIVO</span>
-      <button class="btn-cadastrar-pessoa" onclick="NIT_PLANOP.UI.abrirCadastrarPessoa()"
-        title="Cadastrar novo orientador">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Totais do efetivo -->
-    <div class="efetivo-totais" id="efetivo-totais"></div>
-
-    <div class="turno-legenda">
-      <span class="tl-item"><span class="tl-dot" style="background:#f5b942"></span>Manhã</span>
-      <span class="tl-item"><span class="tl-dot" style="background:#f97316"></span>Tarde</span>
-      <span class="tl-item"><span class="tl-dot" style="background:#8b7cf6"></span>Noite</span>
-    </div>
-
-    <p class="right-hint">Arraste para o QRU ou clique em + Adicionar</p>
-    <div class="right-search">
-      <input id="right-busca" type="text" placeholder="Filtrar..."
-        oninput="NIT_PLANOP.UI.filtrarStaff(this.value)">
-    </div>
-    <div id="staff-lista" class="staff-lista"></div>
-  </aside>
-
+  </div>
 </div>
-
-<!-- ═══════════════════════════════════════════════════════
-     FIREBASE
-═══════════════════════════════════════════════════════ -->
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
-<script src="planop.js"></script>
 
 </body>
 </html>
