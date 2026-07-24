@@ -244,6 +244,25 @@ const NIT_PLANOP = (() => {
     const turno = S.recursos?.[rId]?.turno_padrao;
     return TURNO_COLORS[turno] || avatarColor(nome);
   };
+
+  // Letra do turno para o avatar. As iniciais da pessoa eram redundantes —
+  // o nome completo aparece sempre ao lado, em todos os contextos.
+  const TURNO_LETRA = { manha:'M', tarde:'T', noite:'N' };
+  const turnoLetraDe = rId => TURNO_LETRA[S.recursos?.[rId]?.turno_padrao] || '·';
+
+  // Avatar unificado: anel na cor do turno + letra.
+  // Codificação redundante (cor + letra) atende quem não distingue matizes,
+  // e o anel usa ~85% menos área colorida que o círculo preenchido.
+  // Um único helper para os dois contextos (lista de efetivo e chips)
+  // — evita a divergência que já causou bug nos chips antes.
+  const avatarHTML = (rId, nome, classe = 'staff-avatar', faltou = false) => {
+    const letra = turnoLetraDe(rId);
+    if (faltou) {
+      return `<div class="${classe} av-faltou" title="Faltou">${letra}</div>`;
+    }
+    const cor = avatarColorFor(rId, nome);
+    return `<div class="${classe}" style="border-color:${cor};color:${cor}">${letra}</div>`;
+  };
   const avatarInitials = nome => {
     const parts = (nome||'').trim().split(/\s+/);
     return parts.length >= 2
@@ -980,7 +999,7 @@ const NIT_PLANOP = (() => {
         chipsDiv.innerHTML = Object.entries(window._pfOriSelecionados)
           .map(([id, nome]) => `
             <div class="pf-ori-chip">
-              <div class="chip-avatar" style="background:${avatarColorFor(id.replace(/^[av]:/,''), nome)}">${avatarInitials(nome)}</div>
+              ${avatarHTML(id.replace(/^[av]:/,''), nome, 'chip-avatar')}
               <span>${esc(titleCase(nome))}</span>
               <button onclick="delete window._pfOriSelecionados['${id}'];NIT_PLANOP.UI._renderPfChips()" class="orientador-chip-remove">×</button>
             </div>`).join('');
@@ -1336,9 +1355,7 @@ const NIT_PLANOP = (() => {
         }
 
         return `<div class="busca-pessoa-row">
-          <div class="staff-avatar" style="background:${avatarColorFor(rId, r.nome)}">
-            ${avatarInitials(r.nome)}
-          </div>
+          ${avatarHTML(rId, r.nome, 'staff-avatar')}
           <div class="bp-info">
             <div class="bp-nome">${esc(titleCase(r.nome||rId))} <span class="bp-cargo">${esc(cargo)}</span></div>
             <div class="bp-onde">${ondeHTML}</div>
@@ -1654,7 +1671,7 @@ const NIT_PLANOP = (() => {
         return `<div class="orientador-chip ${ori.faltou?'chip-falta':''}"
           onclick="NIT_PLANOP.UI.toggleChipExpand('${postoId}','${rId}',event)"
           style="cursor:pointer" title="Clique para ver detalhes">
-          <div class="chip-avatar" style="background:${ori.faltou ? 'var(--danger)' : avatarColorFor(rId, nome)}">${avatarInitials(nome)}</div>
+          ${avatarHTML(rId, nome, 'chip-avatar', ori.faltou)}
           <span class="chip-nome">${esc(nomeDisplay)}</span>
           ${ori.faltou
             ? `<span class="chip-cargo chip-cargo-falta">FALTOU</span>`
@@ -2128,9 +2145,7 @@ const NIT_PLANOP = (() => {
             ${canDrag ? `ondragend="NIT_PLANOP.UI.dragEndStaff(event)"` : ''}
             ${canWrite() && canClick ? `onclick="NIT_PLANOP.UI.toggleStaffExpand('${rId}')"` : ''}>
             ${canDrag ? `<span class="staff-drag-handle" aria-hidden="true" onclick="event.stopPropagation()">⠿</span>` : '<span class="staff-drag-placeholder"></span>'}
-            <div class="staff-avatar" style="background:${avatarColorFor(rId, r.nome)}" aria-hidden="true">
-              ${avatarInitials(r.nome)}
-            </div>
+            ${avatarHTML(rId, r.nome, 'staff-avatar')}
             <div class="staff-info">
               <div class="staff-nome">${esc(titleCase(r.nome||rId))}</div>
               <div class="staff-sub-line${hasMotivo?' has-motivo':''}">${esc(subLine)}</div>
@@ -2385,7 +2400,7 @@ const NIT_PLANOP = (() => {
           return `<div class="orientador-chip ${ori.faltou?'chip-falta':''}"
             onclick="NIT_PLANOP.UI.toggleChipExpand('${postoId}','${rId}',event)"
             style="cursor:pointer">
-            <div class="chip-avatar" style="background:${ori.faltou ? 'var(--danger)' : avatarColorFor(rId, nome)}">${avatarInitials(nome)}</div>
+            ${avatarHTML(rId, nome, 'chip-avatar', ori.faltou)}
             <span class="chip-nome">${esc(nomeDisplay)}</span>
             ${ori.faltou
               ? `<span class="chip-cargo chip-cargo-falta">FALTOU</span>`
