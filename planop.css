@@ -500,7 +500,8 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   overflow: hidden; height: 100vh;
   background: var(--bg);
 }
-.conexao-bar {
+.conexao-bar { font-size: 10px; }
+.conexao-bar-legacy {
   display: flex; align-items: center; gap: 6px;
   padding: 3px var(--space-4); font-size: 11px; font-weight: 600;
   transition: all var(--dur-normal);
@@ -611,6 +612,8 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   font-size: 11px; font-weight: 600; padding: 3px 10px;
   border-radius: 20px; flex-shrink: 0; white-space: nowrap;
 }
+/* Regra: cor só quando exige ação. Posto completo não pede nada → neutro.
+   Antes tudo ficava âmbar porque o status nunca chegava a 'completo'. */
 .qru-badge.vazio {
   background: var(--danger-dim); color: var(--danger);
   border: 1px solid var(--danger);
@@ -620,8 +623,9 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   border: 1px solid var(--warning);
 }
 .qru-badge.completo {
-  background: var(--success-dim); color: var(--success);
-  border: 1px solid var(--success);
+  background: none; color: var(--text-tertiary);
+  border: 1px solid var(--border-strong);
+  font-weight: 500;
 }
 .qru-chevron {
   color: var(--text-muted);
@@ -1715,11 +1719,13 @@ input:focus {
 }
 
 /* ── SAVE INDICATOR (header) ─────────────────────────── */
+/* Infra não compete com dado operacional: tipografia muted, dot pequeno */
 .save-indicator {
   display: inline-flex; align-items: center; gap: 5px;
   margin-left: auto; padding-right: var(--space-3);
-  font-size: 11px; color: var(--text-tertiary);
+  font-size: 10px; color: var(--text-muted);
 }
+.save-dot { width: 6px; height: 6px; }
 .save-dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--success); transition: background var(--dur-fast);
@@ -2018,8 +2024,9 @@ input:focus {
 }
 .ops-search:focus { border-color: var(--accent); outline: none; }
 .btn-nova-op-center {
-  height: 32px; padding: 0 var(--space-4);
+  height: 32px; padding: 0 var(--space-5);
   background: var(--accent); border: none;
+  box-shadow: 0 1px 8px rgba(88,166,255,0.28);
   border-radius: var(--radius); color: #0d1826;
   font-size: 12px; font-weight: 700; cursor: pointer;
   transition: opacity var(--dur-fast); white-space: nowrap;
@@ -2281,9 +2288,10 @@ input:focus {
 /* Avatares: reduzir brilho sem perder a identidade de turno.
    Amarelo/âmbar em alta luminância é a cor que mais gera glare
    em fundo escuro — leve redução mantém o código legível. */
-.staff-avatar, .chip-avatar {
-  filter: saturate(0.88);
-}
+/* Identidade de turno preservada (matiz), intensidade reduzida.
+   20 avatares saturados empilhados roubavam o foco do painel central. */
+.chip-avatar  { filter: saturate(0.82); }
+.staff-avatar { filter: saturate(0.62) brightness(0.94); }
 
 /* Cards aninhados: fundo levemente distinto em vez de borda forte */
 .op-card.expandido .qru-card {
@@ -2302,3 +2310,25 @@ input:focus {
   transition: color var(--dur-fast), background var(--dur-fast);
 }
 .ops-search-clear:hover { color: var(--text-primary); background: var(--surface-hover); }
+
+/* ═══ HIERARQUIA DE COR — regra dos 3 semânticos ════════
+   Máximo 3 cores ativas por tela: ação (azul), alerta (âmbar),
+   erro (vermelho). Todo o resto em escala de cinza.
+   Verde fica reservado a confirmação pontual, não a dado permanente. */
+
+/* Métricas do card de operação: neutras por padrão */
+.opm      { color: var(--text-tertiary); }
+.opm-ok   { color: var(--text-tertiary); }   /* "em campo" é dado, não conquista */
+.opm-falta{ color: var(--danger); }           /* exige ação */
+.opm-vazio{ color: var(--warning); }          /* exige ação */
+
+/* Totais do efetivo: número em destaque tipográfico, não cromático */
+.etotal-num { color: var(--text-primary); }
+.etotal-item.warning .etotal-num { color: var(--warning); }
+
+/* Badge de cargo (ORI/MOT/AUX): rótulo, não protagonista.
+   O nome da pessoa é que deve ser lido primeiro. */
+.staff-sub-line, .chip-cargo {
+  color: var(--text-muted);
+  font-weight: 500;
+}
