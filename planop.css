@@ -333,9 +333,14 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   color: var(--text-tertiary); text-transform: uppercase;
   flex-shrink: 0;
 }
+/* Supervisor se distingue por peso e contraste, não por cor:
+   azul é reservado a elementos interativos na gramática do sistema,
+   e um badge de cargo não é clicável. */
 .supervisao-cargo-badge.cargo-sup {
-  background: var(--accent-dim); border-color: var(--accent);
-  color: var(--accent);
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+  font-weight: 800;
 }
 .supervisao-remove-btn {
   background: none; border: none; color: var(--text-muted);
@@ -534,13 +539,6 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 .modo-btn-active:hover { opacity: 0.9; border-color: var(--accent); color: #0d1826; }
 
 /* Badge ATIVO */
-.badge-ativo {
-  font-size: 10px; font-weight: 700; padding: 2px 8px;
-  border-radius: 20px; background: var(--success-dim);
-  color: var(--success); border: 1px solid var(--success);
-  letter-spacing: 0.06em;
-}
-
 /* Métricas */
 /* QRU header */
 .qru-section-header {
@@ -582,9 +580,12 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
 /* Barras semânticas em versão dessaturada: preservam o código de cor
    (vermelho/âmbar/verde) sem o brilho que gera halo e cansaço visual.
    O sinal forte fica no badge compacto, que tem borda curta. */
-.qru-card.status-vazio    { border-left-color: rgba(239,68,68,0.55); }
-.qru-card.status-parcial  { border-left-color: rgba(245,158,11,0.5); }
-.qru-card.status-completo { border-left-color: rgba(34,197,94,0.5); }
+/* Cor só onde há ação pendente. Posto completo = borda neutra:
+   o supervisor não precisa fazer nada com ele, então não deve
+   competir por atenção. Vazio e parcial pedem providência. */
+.qru-card.status-vazio    { border-left-color: rgba(239,68,68,0.6); }
+.qru-card.status-parcial  { border-left-color: rgba(245,158,11,0.55); }
+.qru-card.status-completo { border-left-color: var(--border-strong); }
 
 .qru-card-header {
   display: flex; align-items: center; gap: var(--space-3);
@@ -906,8 +907,10 @@ input, select { font-family: inherit; font-size: 13px; color: var(--text-primary
   background: var(--bg-card); padding: 1px 7px;
   border-radius: 10px; color: var(--text-muted);
 }
-.disponivel-label { color: var(--success); }
-.disponivel-label span { color: var(--success); background: var(--success-dim); }
+/* Contagem é dado neutro — o verde vive no dot de cada pessoa,
+   não no rótulo do grupo inteiro. */
+.disponivel-label { color: var(--text-tertiary); }
+.disponivel-label span { color: var(--text-tertiary); background: var(--bg-card); }
 .warning-label  { color: var(--warning); }
 .warning-label span  { color: var(--warning); background: var(--warning-dim); }
 .danger-label   { color: var(--danger); }
@@ -1407,8 +1410,7 @@ input:focus {
   font-size: 9px; font-weight: 600; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--text-muted);
 }
-.etotal-item.success .etotal-num { color: var(--success); }
-.etotal-item.accent  .etotal-num { color: var(--accent); }
+/* Totais neutros; só 'ausentes' recebe cor (exige providência) */
 .etotal-item.warning .etotal-num { color: var(--warning); }
 
 /* Overlay de confirmação do encerrar turno */
@@ -2055,7 +2057,7 @@ input:focus {
      olhos com astigmatismo — reduzimos o comprimento de borda em 75%. */
   background: var(--bg-card);
   border-color: var(--border-strong);
-  border-left: 3px solid rgba(88,166,255,0.55);
+  border-left: 3px solid rgba(88,166,255,0.35);
 }
 .op-card.op-planejada { opacity: 0.72; border-style: dashed; }
 
@@ -2098,7 +2100,7 @@ input:focus {
   color: var(--text-tertiary);
   font-family: var(--font-mono);
 }
-.opm-ok    { color: var(--success); }
+/* .opm-ok neutro — ver bloco de hierarquia de cor no fim do arquivo */
 .opm-falta { color: var(--danger); }
 .opm-vazio { color: var(--warning); }
 .op-card-menu-wrap { position: relative; flex-shrink: 0; }
@@ -2288,10 +2290,9 @@ input:focus {
 /* Avatares: reduzir brilho sem perder a identidade de turno.
    Amarelo/âmbar em alta luminância é a cor que mais gera glare
    em fundo escuro — leve redução mantém o código legível. */
-/* Identidade de turno preservada (matiz), intensidade reduzida.
-   20 avatares saturados empilhados roubavam o foco do painel central. */
-.chip-avatar  { filter: saturate(0.82); }
-.staff-avatar { filter: saturate(0.62) brightness(0.94); }
+/* Avatar em anel: a cor do turno vive na borda e na letra, não no
+   preenchimento. Reduz ~85% da área colorida mantendo o escaneamento
+   por cor, e a letra M/T/N torna o turno legível sem depender de matiz. */
 
 /* Cards aninhados: fundo levemente distinto em vez de borda forte */
 .op-card.expandido .qru-card {
@@ -2331,4 +2332,41 @@ input:focus {
 .staff-sub-line, .chip-cargo {
   color: var(--text-muted);
   font-weight: 500;
+}
+
+
+/* ═══ AVATAR EM ANEL (turno) ════════════════════════════ */
+.staff-avatar, .chip-avatar {
+  background: var(--bg-card);
+  border: 2px solid var(--border-strong);
+  color: var(--text-tertiary);
+  font-weight: 700;
+  font-family: var(--font-ui);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.staff-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  font-size: 13px;
+}
+.chip-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 11px; border-width: 1.5px;
+}
+
+/* Falta tem precedência sobre turno — é informação mais urgente */
+.staff-avatar.av-faltou, .chip-avatar.av-faltou {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-dim);
+}
+
+/* Legenda de turnos: mesmo padrão dos avatares */
+.tl-ring {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid; background: var(--bg-card);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+  box-sizing: border-box; flex-shrink: 0;
 }
