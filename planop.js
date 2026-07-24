@@ -1627,7 +1627,12 @@ const NIT_PLANOP = (() => {
       const presentes = orientadores.filter(([,o]) => !o.faltou).length;
       const faltaram  = orientadores.filter(([,o]) =>  o.faltou).length;
       const total     = orientadores.length;
-      const status    = total === 0 ? 'vazio' : 'parcial';
+      const meta      = posto.qruPessoas || 1;
+      // Status real: compara presentes com a meta do posto.
+      // Antes era sempre 'parcial' — por isso tudo ficava âmbar.
+      const status    = total === 0            ? 'vazio'
+                      : presentes >= meta      ? 'completo'
+                      : 'parcial';
 
       // Badge composto: mostra presentes + faltaram separados
       // "1 presente · 1 ⚠" é mais acionável que "2 pessoas"
@@ -1635,7 +1640,9 @@ const NIT_PLANOP = (() => {
         ? 'Vazio'
         : faltaram > 0
           ? `${presentes} presente${presentes!==1?'s':''}&nbsp;·&nbsp;<span class="badge-falta">${faltaram} ⚠</span>`
-          : `${total} pessoa${total!==1?'s':''}`;
+          : status === 'completo'
+            ? `${total} pessoa${total!==1?'s':''}`
+            : `${presentes}/${meta} pessoas`;
 
       const chipsHTML = orientadores.map(([rId,ori]) => {
         const nome = ori.nome || rId;
@@ -2041,11 +2048,11 @@ const NIT_PLANOP = (() => {
               <span class="etotal-num">${total}</span>
               <span class="etotal-label">Total</span>
             </div>
-            <div class="etotal-item success">
+            <div class="etotal-item">
               <span class="etotal-num">${nDisp}</span>
               <span class="etotal-label">Disponíveis</span>
             </div>
-            <div class="etotal-item accent">
+            <div class="etotal-item">
               <span class="etotal-num">${nEsc}</span>
               <span class="etotal-label">Escalados</span>
             </div>
@@ -2342,7 +2349,11 @@ const NIT_PLANOP = (() => {
       const card  = document.getElementById(`qru-${postoId}`);
       if (!card || !posto) return;
       const orientadores = Object.entries(posto.orientadores||{});
-      const status       = orientadores.length===0 ? 'vazio' : 'parcial';
+      const presentesP   = orientadores.filter(([,o]) => !o.faltou).length;
+      const metaP        = posto.qruPessoas || 1;
+      const status       = orientadores.length === 0 ? 'vazio'
+                         : presentesP >= metaP       ? 'completo'
+                         : 'parcial';
 
       card.className = (card.className.replace(/\bstatus-\w+\b/g, '') + ` status-${status}`).trim();
 
