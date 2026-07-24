@@ -1457,6 +1457,10 @@ const NIT_PLANOP = (() => {
         <div class="op-card-body ${expandido?'':'hidden'}">
           <div class="qru-section-header">
             <span class="qru-section-label">Postos / QRUs</span>
+            ${postos.length > 1 ? `<input class="qru-search" id="qru-search-${opId}"
+              placeholder="Filtrar postos..."
+              oninput="NIT_PLANOP.UI.filtrarPostos('${opId}', this.value)"
+              onclick="event.stopPropagation()">` : ''}
             ${postos.length > 1 ? `<button class="btn-ghost-sm" id="btn-exp-postos-${opId}"
               onclick="NIT_PLANOP.UI.toggleExpandirPostos('${opId}',event)">Expandir postos</button>` : ''}
             ${canWrite() ? `<button class="btn-add-posto"
@@ -1569,6 +1573,47 @@ const NIT_PLANOP = (() => {
     },
 
     // Expande/colapsa todos os postos de uma operação
+    // Filtra os postos de uma operação direto no DOM, sem re-render.
+    // Assim os cards expandidos e os dropdowns abertos não colapsam.
+    // Busca em: endereço, bairro, tipo de ação, número e nome de orientador.
+    filtrarPostos(opId, val) {
+      const busca = (val || '').toLowerCase().trim();
+      const lista = document.getElementById(`qrus-lista-${opId}`);
+      if (!lista) return;
+
+      let visiveis = 0;
+      lista.querySelectorAll('.qru-card').forEach(card => {
+        const postoId = card.id.replace('qru-', '');
+        const p = S.postos[postoId];
+        if (!p) return;
+
+        const casa = !busca
+          || (p.local||'').toLowerCase().includes(busca)
+          || (p.bairro||'').toLowerCase().includes(busca)
+          || (p.tipoAcao||'').toLowerCase().includes(busca)
+          || String(p.numero||'').includes(busca)
+          || Object.values(p.orientadores||{})
+              .some(o => (o.nome||'').toLowerCase().includes(busca));
+
+        card.style.display = casa ? '' : 'none';
+        if (casa) visiveis++;
+      });
+
+      // Aviso de "nenhum posto encontrado"
+      let vazio = lista.querySelector('.qru-filtro-vazio');
+      if (busca && visiveis === 0) {
+        if (!vazio) {
+          vazio = document.createElement('div');
+          vazio.className = 'qru-filtro-vazio';
+          lista.appendChild(vazio);
+        }
+        vazio.textContent = `Nenhum posto encontrado para "${val}"`;
+        vazio.style.display = '';
+      } else if (vazio) {
+        vazio.style.display = 'none';
+      }
+    },
+
     toggleExpandirPostos(opId, event) {
       event?.stopPropagation();
       const lista = document.getElementById(`qrus-lista-${opId}`);
@@ -2731,10 +2776,12 @@ const NIT_PLANOP = (() => {
       const [y,m,d] = atual.split('-').map(Number);
       const nova = new Date(y, m-1, d + delta);
       S._dataVista = nova.toISOString().slice(0,10);
+      UI.renderMainContent();
     },
 
     voltarHoje() {
       S._dataVista = getDataHoje();
+      UI.renderMainContent();
     },
 
 
