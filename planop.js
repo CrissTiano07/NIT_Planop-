@@ -306,7 +306,8 @@ const NIT_PLANOP = (() => {
   };
 
   // Toast com ação de desfazer — padrão Gmail
-  const toastUndo = (msg, onUndo, ms=5000) => {
+  // label: rótulo do botão (default 'Desfazer'; usado como 'Tentar de novo' no retry de restore)
+  const toastUndo = (msg, onUndo, ms=5000, label='Desfazer') => {
     let cont = $('toast-container');
     if (!cont) {
       cont = document.createElement('div');
@@ -318,7 +319,7 @@ const NIT_PLANOP = (() => {
     t.innerHTML = `<span>${msg}</span>`;
     const btn = document.createElement('button');
     btn.className = 'toast-undo-btn';
-    btn.textContent = 'Desfazer';
+    btn.textContent = label;
     let desfeito = false;
     btn.onclick = () => { desfeito = true; onUndo?.(); t.remove(); };
     t.appendChild(btn);
@@ -3595,68 +3596,103 @@ const NIT_PLANOP = (() => {
       const op = S.operacoes[opId];
       if (!op) return;
 
-      // Snapshot completo para possível undo
+      // Snapshot completo para restaurar caso o usuário desfaça.
+      // ⚠ DEPENDÊNCIA: { ...p } captura fotoReferencia/fotosRegistro porque hoje
+      // elas vivem em memória (cache do _listenPostos). Quando as fotos migrarem
+      // para /efetivo/postos_fotos/ (item urgente do backlog), este snapshot deixa
+      // de capturá-las e _restoreOp perde as fotos — será preciso snapshotar e
+      // reescrever aquele nó também. Não esquecer na migração.
       const postosOp = Object.entries(S.postos).filter(([,p]) => p.operacaoId === opId);
       const snapshot = {
+        opId,
         op: { ...op },
         postos: postosOp.map(([pid, p]) => [pid, { ...p }])
       };
-
-      // Esconder da UI imediatamente (soft delete)
-      const opRestore = S.operacoes[opId];
-      const postosRestore = {};
-      postosOp.forEach(([pid, p]) => { postosRestore[pid] = p; delete S.postos[pid]; });
-      delete S.operacoes[opId];
       const eraSelected = S.operacaoSel === opId;
+
+      // 1) Otimismo local + suppress: o card some na hora e o listener não
+      //    reconstrói o estado (trazendo o item de volta) no meio do round-trip.
+      S._suppressRender = true;
+      postosOp.forEach(([pid]) => delete S.postos[pid]);
+      delete S.operacoes[opId];
       if (eraSelected) S.operacaoSel = null;
       UI.renderMainContent();
 
-      let desfeito = false;
-      const nome = titleCase(op.nome);
-      toastUndo(`"${esc(nome)}" removida`, () => {
-        desfeito = true;
-        // Restaurar no estado local
-        S.operacoes[opId] = opRestore;
-        Object.entries(postosRestore).forEach(([pid, p]) => { S.postos[pid] = p; });
-        if (eraSelected) S.operacaoSel = opId;
-          UI.renderMainContent();
-        toast('Remoção desfeita', 'success');
-      }, 5000);
-
-      // Após 5s sem undo, commit no Firebase
-      setTimeout(async () => {
-        if (desfeito) return;
+      // 2) Commit IMEDIATO no Firebase. Sem janela onde local e remoto discordam:
+      //    mata o defeito do fechar-a-aba e o do item piscando de volta.
+      try {
         await Actions._commitDeleteOp(opId, snapshot);
-      }, 5200);
+      } catch (e) {
+        // Falhou: reverte o otimismo e avisa.
+        snapshot.postos.forEach(([pid, p]) => { S.postos[pid] = p; });
+        S.operacoes[opId] = snapshot.op;
+        if (eraSelected) S.operacaoSel = opId;
+        S._suppressRender = false;
+        UI.renderMainContent();
+        toast(erroHumano(e), 'danger', 5000);
+        return;
+      }
+      S._suppressRender = false;
+
+      // 3) Desfazer = RESTORE do snapshot no Firebase (não "cancelar um commit").
+      //    Retry recursivo: se o restore falhar (rede), o snapshot segue no closure
+      //    e re-oferecemos o botão — a única chance de recuperação não se perde.
+      const nome = titleCase(op.nome);
+      const tentarRestore = async () => {
+        try {
+          await Actions._restoreOp(snapshot);
+          if (eraSelected) S.operacaoSel = snapshot.opId;
+          UI.renderMainContent();
+          toast('Remoção desfeita', 'success');
+        } catch (e) {
+          toast(erroHumano(e), 'danger', 4000);
+          toastUndo('Falha ao desfazer.', tentarRestore, 8000, 'Tentar de novo');
+        }
+      };
+      toastUndo(`"${esc(nome)}" removida`, tentarRestore, 5000);
     },
 
     async _commitDeleteOp(opId, snapshot) {
       const postosIds = new Set(snapshot.postos.map(([pid]) => pid));
-      const aLiberar  = new Set();
+      const updates = {};
+
+      // Liberar orientadores que não estão em nenhum outro posto vivo.
       snapshot.postos.forEach(([, posto]) => {
         Object.keys(posto.orientadores||{}).forEach(rId => {
           const emOutro = Object.entries(S.postos)
             .some(([id2, p2]) => !postosIds.has(id2) && p2.orientadores?.[rId]);
-          if (!emOutro) aLiberar.add(rId);
+          if (!emOutro) {
+            updates[`efetivo/recursos/${rId}/status`] = 'disponivel';
+            if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
+          }
         });
       });
-      try {
-        if (aLiberar.size) {
-          const updates = {};
-          aLiberar.forEach(rId => {
-            updates[`${rId}/status`] = 'disponivel';
-            if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
-          });
-          await S.db.ref('efetivo/recursos').update(updates);
-        }
-        for (const [pid] of snapshot.postos) {
-          await S.db.ref(`efetivo/postos/${pid}`).remove();
-        }
-        await S.db.ref(`efetivo/operacoes/${opId}`).remove();
-        UI.renderRightPanel();
-      } catch (e) {
-        toast(erroHumano(e), 'danger', 5000);
-      }
+
+      // Remover postos + operação. null no fan-out = delete atômico (tudo ou nada):
+      // se a rede cair no meio, nada é apagado — sem delete parcial.
+      snapshot.postos.forEach(([pid]) => { updates[`efetivo/postos/${pid}`] = null; });
+      updates[`efetivo/operacoes/${opId}`] = null;
+
+      await S.db.ref().update(updates);
+      UI.renderRightPanel();
+    },
+
+    // Restaura operação + postos + status dos orientadores num único write atômico.
+    // O listener reconstrói S.operacoes/S.postos do snap automaticamente.
+    // ⚠ Depende das fotos estarem no snapshot (ver aviso em deletarOp).
+    async _restoreOp(snapshot) {
+      const updates = {};
+      updates[`efetivo/operacoes/${snapshot.opId}`] = snapshot.op;
+      snapshot.postos.forEach(([pid, p]) => {
+        updates[`efetivo/postos/${pid}`] = p;
+        // Re-escalar quem estava no posto (decisão consciente: o orientador está
+        // voltando ao posto, escalado é o estado correto; sobrescrita cega é
+        // aceitável no cenário de um supervisor por turno).
+        Object.keys(p.orientadores || {}).forEach(rId => {
+          updates[`efetivo/recursos/${rId}/status`] = 'escalado';
+        });
+      });
+      await S.db.ref().update(updates);
     },
 
     async deletarPosto(postoId) {
@@ -3664,40 +3700,65 @@ const NIT_PLANOP = (() => {
       const posto = S.postos[postoId];
       if (!posto) return;
 
-      const snapshot = { [postoId]: { ...posto } };
-      const restore  = posto;
-      delete S.postos[postoId]; // soft delete
+      // ⚠ Mesma dependência de fotos em memória descrita em deletarOp:
+      // quando fotos migrarem para /efetivo/postos_fotos/, _restorePosto
+      // precisa snapshotar e reescrever aquele nó também.
+      const snapshot = { ...posto };
+
+      // 1) Otimismo local + suppress.
+      S._suppressRender = true;
+      delete S.postos[postoId];
       UI.renderMainContent();
 
-      let desfeito = false;
-      toastUndo(`Posto Nº ${posto.numero} removido`, () => {
-        desfeito = true;
-        S.postos[postoId] = restore;
-          UI.renderMainContent();
-        toast('Remoção desfeita', 'success');
-      }, 5000);
+      // 2) Commit imediato no Firebase.
+      try {
+        await Actions._commitDeletePosto(postoId, snapshot);
+      } catch (e) {
+        S.postos[postoId] = snapshot;
+        S._suppressRender = false;
+        UI.renderMainContent();
+        toast(erroHumano(e), 'danger', 5000);
+        return;
+      }
+      S._suppressRender = false;
 
-      setTimeout(async () => {
-        if (desfeito) return;
-        await Actions._commitDeletePosto(postoId, snapshot[postoId]);
-      }, 5200);
+      // 3) Desfazer = restore, com retry recursivo se falhar.
+      const tentarRestore = async () => {
+        try {
+          await Actions._restorePosto(postoId, snapshot);
+          UI.renderMainContent();
+          toast('Remoção desfeita', 'success');
+        } catch (e) {
+          toast(erroHumano(e), 'danger', 4000);
+          toastUndo('Falha ao desfazer.', tentarRestore, 8000, 'Tentar de novo');
+        }
+      };
+      toastUndo(`Posto Nº ${posto.numero} removido`, tentarRestore, 5000);
     },
 
     async _commitDeletePosto(postoId, posto) {
-      try {
-        for (const rId of Object.keys(posto.orientadores||{})) {
-          const emOutro = Object.entries(S.postos)
-            .some(([id2,p2]) => id2!==postoId && p2.orientadores?.[rId]);
-          if (!emOutro) {
-            await S.db.ref(`efetivo/recursos/${rId}/status`).set('disponivel');
-            if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
-          }
+      const updates = {};
+      Object.keys(posto.orientadores||{}).forEach(rId => {
+        const emOutro = Object.entries(S.postos)
+          .some(([id2,p2]) => id2!==postoId && p2.orientadores?.[rId]);
+        if (!emOutro) {
+          updates[`efetivo/recursos/${rId}/status`] = 'disponivel';
+          if (S.recursos[rId]) S.recursos[rId].status = 'disponivel';
         }
-        await S.db.ref(`efetivo/postos/${postoId}`).remove();
-        UI.renderRightPanel();
-      } catch (e) {
-        toast(erroHumano(e), 'danger', 5000);
-      }
+      });
+      updates[`efetivo/postos/${postoId}`] = null;
+      await S.db.ref().update(updates); // atômico
+      UI.renderRightPanel();
+    },
+
+    // Restaura um posto + status dos orientadores num único write atômico.
+    async _restorePosto(postoId, posto) {
+      const updates = {};
+      updates[`efetivo/postos/${postoId}`] = posto;
+      Object.keys(posto.orientadores || {}).forEach(rId => {
+        updates[`efetivo/recursos/${rId}/status`] = 'escalado';
+      });
+      await S.db.ref().update(updates);
     },
 
     async salvarObs(postoId, val) {
