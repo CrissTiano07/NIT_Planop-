@@ -594,9 +594,15 @@ const NIT_PLANOP = (() => {
         if (!bar) return;
         bar.className = `conexao-bar ${online ? 'conexao-online' : 'conexao-offline'}`;
         if (lbl) lbl.textContent = online ? 'Firebase online' : 'Sem conexão';
-        // Save indicator reflete estado offline
-        if (!online) setSaveState('offline');
-        else if (_pendingWrites === 0) setSaveState('saved');
+        // Conexão e "trabalho não salvo" são coisas diferentes:
+        // a barra acima já avisa do offline. O chip de save só alarma
+        // pendências quando há de fato writes na fila (senão "0 pendentes"
+        // vira alarme falso e corrói a confiança nos alarmes reais).
+        if (!online) {
+          setSaveState(_pendingWrites > 0 ? 'offline' : 'saved');
+        } else if (_pendingWrites === 0) {
+          setSaveState('saved');
+        }
       });
       S._unsubs.push(() => ref.off('value', fn));
     },
