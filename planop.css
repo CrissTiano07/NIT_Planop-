@@ -1741,20 +1741,37 @@ input:focus {
 
 /* ── SAVE INDICATOR (header) ─────────────────────────── */
 /* Infra não compete com dado operacional: tipografia muted, dot pequeno */
+/* Heurística #1 · Visibilidade do estado — calmo quando OK, ALTO quando errado.
+   O container reage ao estado do ponto via :has() (sem tocar no JS). */
 .save-indicator {
-  display: inline-flex; align-items: center; gap: 5px;
-  margin-left: auto; padding-right: var(--space-3);
-  font-size: var(--fs-1); color: var(--text-muted);
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-left: auto; padding: var(--space-1) var(--space-3);
+  border: 1px solid transparent; border-radius: 999px;
+  font-size: var(--fs-1); font-weight: 600; color: var(--text-muted);
+  transition: background var(--dur-normal), border-color var(--dur-normal),
+              color var(--dur-normal), font-size var(--dur-normal);
 }
-.save-dot { width: 6px; height: 6px; }
+/* Salvando: âmbar sutil, transitório */
+.save-indicator:has(.save-dot.saving) { color: var(--warning); }
+/* ERRO: chip vermelho — precisa de ação, impossível ignorar */
+.save-indicator:has(.save-dot.error) {
+  background: var(--danger-dim); border-color: var(--danger);
+  color: var(--danger); font-size: var(--fs-2);
+}
+/* PENDÊNCIAS/offline: chip âmbar pulsante — recuperável, mas visível */
+.save-indicator:has(.save-dot.offline) {
+  background: var(--warning-dim); border-color: var(--warning);
+  color: var(--warning); font-size: var(--fs-2);
+}
+
 .save-dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--success); transition: background var(--dur-fast);
 }
 .save-dot.saving { background: var(--warning); animation: pulse-dot 1s infinite; }
 .save-dot.saved  { background: var(--success); }
-.save-dot.error  { background: var(--danger); }
-.save-dot.offline{ background: var(--danger); animation: pulse-dot 1.5s infinite; }
+.save-dot.error  { background: var(--danger);  width: 9px; height: 9px; }
+.save-dot.offline{ background: var(--warning); width: 9px; height: 9px; animation: pulse-dot 1.2s infinite; }
 @keyframes pulse-dot {
   0%,100% { opacity: 1; } 50% { opacity: 0.35; }
 }
