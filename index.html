@@ -27,7 +27,7 @@
       </div>
       <div class="login-brand-text">
         <span class="login-brand-name">CENTRAL OPS</span>
-        <span class="login-brand-sub">PLANO OPERACIONAL · AMC FORTALEZA</span>
+        <span class="login-brand-sub">Plano Operacional · AMC Fortaleza</span>
       </div>
     </div>
     <p class="login-desc">Acesso restrito a supervisores e monitores autorizados.</p>
@@ -58,7 +58,7 @@
 
   <main class="campo-main">
     <div class="campo-search-wrap">
-      <label class="campo-search-label">CONSULTA DE QTH</label>
+      <label class="campo-search-label">Consulta de QTH</label>
       <div class="campo-search-row">
         <input id="campo-busca" type="text" class="campo-input"
           placeholder="Digite seu nome..." autocomplete="off"
@@ -93,7 +93,7 @@
         </div>
         <div class="sidebar-brand-text">
           <span class="sidebar-brand-name">CENTRAL OPS</span>
-          <span class="sidebar-brand-sub">PLANO OPERACIONAL</span>
+          <span class="sidebar-brand-sub">Plano Operacional</span>
         </div>
       </div>
       <div class="settings-wrap">
@@ -129,7 +129,7 @@
     <div class="sidebar-section" id="supervisao-section">
       <button class="sidebar-section-toggle" id="supervisao-toggle"
         onclick="NIT_PLANOP.UI.toggleSupervisao()" aria-expanded="true">
-        <span class="section-label">SUPERVISÃO DO TURNO</span>
+        <span class="section-label">Supervisão do turno</span>
         <span id="supervisao-count" class="section-count">—</span>
         <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polyline points="6 9 12 15 18 9"/>
@@ -173,7 +173,7 @@
   <!-- ── COLUNA 3: PAINEL DIREITO ──────────────────────── -->
   <aside class="right-panel" id="right-panel">
     <div class="right-header">
-      <span class="section-label">EFETIVO</span>
+      <span class="section-label">Efetivo</span>
       <button class="btn-cadastrar-pessoa" onclick="NIT_PLANOP.UI.abrirCadastrarPessoa()"
         title="Cadastrar novo orientador">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -208,6 +208,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
 <script src="planop.js"></script>
+<script src="planop-p0.js"></script>
 
 
 <!-- Overlay: Nova Operação (movido da sidebar) -->
@@ -270,11 +271,17 @@
           <div class="vigencia-datas">
             <div class="vigencia-campo">
               <label class="form-label">Início</label>
-              <input id="nop-data-inicio" type="date" class="input-sm">
+              <input id="nop-data-inicio" type="text" class="input-sm input-data-br"
+                     inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"
+                     autocomplete="off" aria-describedby="nop-data-inicio-hint">
+              <span id="nop-data-inicio-hint" class="form-hint">dia/mês/ano</span>
             </div>
             <div class="vigencia-campo">
               <label class="form-label">Fim</label>
-              <input id="nop-data-fim" type="date" class="input-sm">
+              <input id="nop-data-fim" type="text" class="input-sm input-data-br"
+                     inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"
+                     autocomplete="off" aria-describedby="nop-data-fim-hint">
+              <span id="nop-data-fim-hint" class="form-hint">dia/mês/ano</span>
             </div>
           </div>
           <label class="vigencia-sem-prazo">
