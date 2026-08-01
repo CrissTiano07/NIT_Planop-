@@ -1411,7 +1411,8 @@ input:focus {
 
 .efetivo-totais { padding: var(--space-3) var(--space-4) 0; }
 .efetivo-total-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2×2 na coluna estreita — os 4 não cabem em 1×4 com a fonte maior */
   gap: var(--space-2); margin-bottom: var(--space-3);
 }
 .etotal-item {
